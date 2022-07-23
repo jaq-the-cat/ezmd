@@ -35,37 +35,34 @@ class Spotify extends SpotifyApi {
 class Ezmp {
   final Youtube yt;
   final Spotify spotify;
-  /*final Audiotagger tagger;*/
   Ezmp() :
   yt = Youtube(),
-  spotify = Spotify()
-  // tagger = Audiotagger()
-  {
-  dotenv.load();
+  spotify = Spotify() {
+    dotenv.load();
   }
 
   void downloadSong(String query) async {
     String? songName;
     String? spotifiedQuery;
-    /*Map<String, String> tags = {};*/
+    Map<String, String> tags = {};
 
     spotify.getSongMetadata(query).then((song) {
       if (song != null) {
         songName = song.name;
-        spotifiedQuery = "${songName} ${song.artists!.map((a) => a.name).join(", ")}";
+        spotifiedQuery = "$songName ${song.artists!.map((a) => a.name).join(", ")}";
         var artworkAll = song.album!.images!;
         var artwork = artworkAll[artworkAll.length ~/ 2];
-        /*tags = {*/
-          /*"title": songName!,*/
-          /*"artist": song.artists!.map((a) => a.name).join(", "),*/
-          /*"genre": song.artists!.first.genres!.first,*/
-          /*"trackNumber": song.trackNumber!.toString(),*/
-          /*"discNumber": song.discNumber!.toString(),*/
-          /*"album": song.album!.name!,*/
-          /*"albumArtist": song.album!.artists!.first.name!,*/
-          /*"year": song.album!.releaseDate!.substring(0, 4),*/
-          /*"artwork": artwork.url!,*/
-        /*};*/
+        tags = {
+          "title": songName!,
+          "artist": song.artists!.map((a) => a.name).join(", "),
+          "genre": song.artists!.first.genres!.first,
+          "trackNumber": song.trackNumber!.toString(),
+          "discNumber": song.discNumber!.toString(),
+          "album": song.album!.name!,
+          "albumArtist": song.album!.artists!.first.name!,
+          "year": song.album!.releaseDate!.substring(0, 4),
+          "artwork": artwork.url!,
+        };
       }
     });
 
@@ -78,10 +75,7 @@ class Ezmp {
     await fs.flush();
     await fs.close();
 
-    /*await tagger.writeTagsFromMap(*/
-      /*path: "$songName.mp3",*/
-      /*tags: tags,*/
-    /*);*/
+    // write tags
   }
 }
 
