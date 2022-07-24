@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:dotenv/dotenv.dart' as dotenv;
 import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
-/*import 'package:audiotagger/audiotagger.dart';*/
+import 'id3_writer_custom_attempt.dart';
 
 class Youtube extends YoutubeExplode {
   Future<VideoId> getSongId(String query) async {
@@ -34,39 +34,42 @@ class Spotify extends SpotifyApi {
 
 class Ezmp {
   final Youtube yt;
-  final Spotify spotify;
+  final Spotify? spotify = null;
   Ezmp() :
-  yt = Youtube(),
-  spotify = Spotify() {
-    dotenv.load();
-  }
+  yt = Youtube();
+  /*spotify = Spotify() {*/
+    /*dotenv.load();*/
+  /*}*/
 
   void downloadSong(String query) async {
     String? songName;
     String? spotifiedQuery;
     Map<String, String> tags = {};
 
-    spotify.getSongMetadata(query).then((song) {
-      if (song != null) {
-        songName = song.name;
-        spotifiedQuery = "$songName ${song.artists!.map((a) => a.name).join(", ")}";
-        var artworkAll = song.album!.images!;
-        var artwork = artworkAll[artworkAll.length ~/ 2];
-        tags = {
-          "title": songName!,
-          "artist": song.artists!.map((a) => a.name).join(", "),
-          "genre": song.artists!.first.genres!.first,
-          "trackNumber": song.trackNumber!.toString(),
-          "discNumber": song.discNumber!.toString(),
-          "album": song.album!.name!,
-          "albumArtist": song.album!.artists!.first.name!,
-          "year": song.album!.releaseDate!.substring(0, 4),
-          "artwork": artwork.url!,
-        };
-      }
-    });
+    /*spotify.getSongMetadata(query).then((song) {*/
+      /*if (song != null) {*/
+        /*songName = song.name;*/
+        /*spotifiedQuery = "$songName ${song.artists!.map((a) => a.name).join(", ")}";*/
+        /*var artworkAll = song.album!.images!;*/
+        /*var artwork = artworkAll[artworkAll.length ~/ 2];*/
+        /*tags = {*/
+          /*"title": songName!,*/
+          /*"artist": song.artists!.map((a) => a.name).join(", "),*/
+          /*"genre": song.artists!.first.genres!.first,*/
+          /*"trackNumber": song.trackNumber!.toString(),*/
+          /*"discNumber": song.discNumber!.toString(),*/
+          /*"album": song.album!.name!,*/
+          /*"albumArtist": song.album!.artists!.first.name!,*/
+          /*"year": song.album!.releaseDate!.substring(0, 4),*/
+          /*"artwork": artwork.url!,*/
+        /*};*/
+      /*}*/
+    /*});*/
 
-    if (spotifiedQuery == null) return;
+    /*if (spotifiedQuery == null) return;*/
+
+    spotifiedQuery = "Linkin Park - Numb";
+    songName = "Numb";
 
     var stream = await yt.downloadSong(spotifiedQuery!);
 
@@ -81,9 +84,14 @@ class Ezmp {
 
 
 void main(List<String> arguments) async {
-  var ezmp = Ezmp();
-  var input = stdin.readLineSync();
-  if (input != null) {
-    ezmp.downloadSong(input);
-  }
+  /*var ezmp = Ezmp();*/
+  /*var input = stdin.readLineSync();*/
+  /*if (input != null) {*/
+    /*ezmp.downloadSong(input);*/
+  /*}*/
+
+  Mp3File tagged = await Mp3File.create("Numb.mp3");
+  print(tagged.hasId3v2());
+  tagged.test();
+  /*tagged.setMetadata();*/
 }

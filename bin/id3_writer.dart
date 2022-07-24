@@ -18,7 +18,7 @@ import 'dart:typed_data';
 // encoding: https://encoding.spec.whatwg.org/
 dynamic strToCodePoints(String str) => (str).split('').map((c) => c.codeUnitAt(0));
 dynamic encodeWindows1252(String str) => Uint8List.fromList(strToCodePoints(str));
-dynamic encodeUtf16le(String str) => Uint16List.fromList(strToCodePoints(str));
+dynamic encodeUtf16le(String str) => Uint16List.fromList(strToCodePoints(str)).length;
 
 // mime type
 dynamic isId3v2(List<num> buf) => buf[0] == 0x49 && buf[1] == 0x44 && buf[2] == 0x33;
