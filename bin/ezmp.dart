@@ -90,8 +90,7 @@ void main(List<String> arguments) async {
     /*ezmp.downloadSong(input);*/
   /*}*/
 
-  Mp3File tagged = await Mp3File.create("Numb.mp3");
-  print(tagged.hasId3v2());
+  ID3File tagged = await ID3File.create("Numb.mp3", "Numb", "Linkin Park");
+  /*tagged.setHeader();*/
   tagged.test();
-  /*tagged.setMetadata();*/
 }
