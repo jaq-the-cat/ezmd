@@ -3,12 +3,14 @@
 
    Copyright Artyom Egorov mail@egoroof.ru
 
-   Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+   Permission is hereby granted, free of charge, to any person obtaining a copy of software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
-   The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+   The above copyright notice and permission notice shall be included in all copies or substantial portions of the Software.
 
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
+
+import 'dart:ffi';
 
 import './id3_sizes.dart';
 import 'dart:typed_data';
@@ -53,9 +55,35 @@ dynamic getMimeType(buf) {
     return null;
 }
 
+Uint8List uint32ToUint8List(uint32) {
+    const eightBitMask = 0xff;
+
+    return Uint8List.fromList([
+        (uint32 >>> 24) & eightBitMask,
+        (uint32 >>> 16) & eightBitMask,
+        (uint32 >>> 8) & eightBitMask,
+        uint32 & eightBitMask,
+    ]);
+}
+
+List<dynamic> uint28ToUint7List(uint28) {
+    const sevenBitMask = 0x7f;
+
+    return [
+        (uint28 >>> 21) & sevenBitMask,
+        (uint28 >>> 14) & sevenBitMask,
+        (uint28 >>> 7) & sevenBitMask,
+        uint28 & sevenBitMask,
+    ];
+}
+
+int uint7ListToUint28(uint7List) {
+    return (uint7List[0] << 21) + (uint7List[1] << 14) + (uint7List[2] << 7) + uint7List[3];
+}
+
 class ID3Writer {
   _setIntegerFrame(String name, int value) {
-    frames.push({
+    frames.add({
         "name": name,
         "value": value,
         "size": getNumericFrameSize(value.toString().length),
@@ -63,7 +91,7 @@ class ID3Writer {
   }
 
   _setStringFrame(String name, String value) {
-    frames.push({
+    frames.add({
         "name": name,
         "value": value,
         "size": getStringFrameSize(value.length),
@@ -75,7 +103,7 @@ class ID3Writer {
     if (description == null) {
       useUnicodeEncoding = false;
     }
-    frames.push({
+    frames.add({
         "name": 'APIC',
         "value": data,
         "pictureType": pictureType,
@@ -87,7 +115,7 @@ class ID3Writer {
   }
   _setPrivateFrame(String id, data) {
 
-    frames.push({
+    frames.add({
         "name": 'PRIV',
         "value": data,
         "id": id,
@@ -97,7 +125,7 @@ class ID3Writer {
 
   _setUrlLinkFrame(String name, String url) {
 
-    frames.push({
+    frames.add({
         "name": name,
         "value": url,
         "size": getUrlLinkFrameSize(url.length),
@@ -141,42 +169,23 @@ class ID3Writer {
       case 'TKEY': // musical key in which the sound starts
       case 'TEXT': // lyricist / text writer
       case 'TSRC': { // isrc
-                     this._setStringFrame(frameName, frameValue);
+                     _setStringFrame(frameName, frameValue);
                      break;
                    }
       case 'TBPM': // beats per minute
       case 'TLEN': // song duration
       case 'TDAT': // album release date expressed as DDMM
       case 'TYER': { // album release year
-                     this._setIntegerFrame(frameName, frameValue);
+                     _setIntegerFrame(frameName, frameValue);
                      break;
                    }
-      case 'USLT': { // unsychronised lyrics
-                     frameValue.language = frameValue.language || 'eng';
-                     if (typeof frameValue !== 'object' || !('description' in frameValue) || !('lyrics' in frameValue)) {
-                       throw new Error('USLT frame value should be an object with keys description and lyrics');
-                     }
-                     if (frameValue.language && !frameValue.language.match(/[a-z]{3}/i)) {
-                       throw new Error('Language must be coded following the ISO 639-2 standards');
-                     }
-                     this._setLyricsFrame(frameValue.language, frameValue.description, frameValue.lyrics);
-                     break;
-                   }
+      case 'USLT':
       case 'APIC': { // song cover
-                     if (typeof frameValue !== 'object' || !('type' in frameValue) || !('data' in frameValue) || !('description' in frameValue)) {
-                       throw new Error('APIC frame value should be an object with keys type, data and description');
-                     }
+                     // APIC frame value should be an object with keys type, data and description
                      if (frameValue.type < 0 || frameValue.type > 20) {
-                       throw new Error('Incorrect APIC frame picture type');
+                       return;
                      }
-                     this._setPictureFrame(frameValue.type, frameValue.data, frameValue.description, !!frameValue.useUnicodeEncoding);
-                     break;
-                   }
-      case 'TXXX': { // user defined text information
-                     if (typeof frameValue !== 'object' || !('description' in frameValue) || !('value' in frameValue)) {
-                       throw new Error('TXXX frame value should be an object with keys description and value');
-                     }
-                     this._setUserStringFrame(frameValue.description, frameValue.value);
+                     _setPictureFrame(frameValue.type, frameValue.data, frameValue.description, !!frameValue.useUnicodeEncoding);
                      break;
                    }
       case 'WCOM': // Commercial information
@@ -187,87 +196,72 @@ class ID3Writer {
       case 'WORS': // Official internet radio station homepage
       case 'WPAY': // Payment
       case 'WPUB': { // Publishers official webpage
-                     this._setUrlLinkFrame(frameName, frameValue);
+                     _setUrlLinkFrame(frameName, frameValue);
                      break;
                    }
-      case 'COMM': { // Comments
-                     frameValue.language = frameValue.language || 'eng';
-                     if (typeof frameValue !== 'object' || !('description' in frameValue) || !('text' in frameValue)) {
-                       throw new Error('COMM frame value should be an object with keys description and text');
-                     }
-                     if (frameValue.language && !frameValue.language.match(/[a-z]{3}/i)) {
-                       throw new Error('Language must be coded following the ISO 639-2 standards');
-                     }
-                     this._setCommentFrame(frameValue.language, frameValue.description, frameValue.text);
-                     break;
-                   }
-      case 'PRIV': { // Private frame
-                     if (typeof frameValue !== 'object' || !('id' in frameValue) || !('data' in frameValue)) {
-                       throw new Error('PRIV frame value should be an object with keys id and data');
-                     }
-                     this._setPrivateFrame(frameValue.id, frameValue.data);
-                     break;
-                   }
-      default: {
-                 throw new Error(`Unsupported frame ${frameName}`);
-               }
-    }
-    return this;
+      case 'COMM':
+      case 'PRIV':
+      default:
+      }
+    return;
   }
 
-  removeTag() {
+  void removeTag() {
     const headerLength = 10;
 
-    if (this.arrayBuffer.byteLength < headerLength) {
+    if (arrayBuffer.lengthInBytes < headerLength) {
       return;
     }
-    const bytes = new Uint8Array(this.arrayBuffer);
-    const version = bytes[3];
-    const tagSize = uint7ArrayToUint28([bytes[6], bytes[7], bytes[8], bytes[9]]) + headerLength;
+    final bytes = Uint8List.fromList(arrayBuffer);
+    final version = bytes[3];
+    final tagSize = uint7ListToUint28([bytes[6], bytes[7], bytes[8], bytes[9]]) + headerLength;
 
     if (!isId3v2(bytes) || version < 2 || version > 4) {
       return;
     }
-    this.arrayBuffer = (new Uint8Array(bytes.subarray(tagSize))).buffer;
+    arrayBuffer = Uint8List.fromList(bytes.sublist(tagSize));
   }
 
-  addTag() {
-    this.removeTag();
+  ByteData addTag() {
+    removeTag();
 
     const BOM = [0xff, 0xfe];
     const headerSize = 10;
-    const totalFrameSize = frames.reduce((sum, frame) => sum + frame.size, 0);
-    const totalTagSize = headerSize + totalFrameSize + this.padding;
-    const buffer = new ArrayBuffer(this.arrayBuffer.byteLength + totalTagSize);
-    const bufferWriter = new Uint8Array(buffer);
+    int totalFrameSize = 0;
+    for (var frame in frames) {
+      totalFrameSize += frame.length;
+    }
+    final totalTagSize = headerSize + totalFrameSize + padding;
+    final buffer = ByteData(arrayBuffer.lengthInBytes + totalTagSize);
+    final bufferWriter = Uint8List.view(buffer.buffer);
 
-    let offset = 0;
-    let writeBytes = [];
+    var offset = 0;
+    List<dynamic> writeBytes = [];
 
     writeBytes = [0x49, 0x44, 0x33, 3]; // ID3 tag and version
-    bufferWriter.set(writeBytes, offset);
+    bufferWriter.setAll(offset, writeBytes as Uint8List);
     offset += writeBytes.length;
 
     offset++; // version revision
     offset++; // flags
 
-    writeBytes = uint28ToUint7Array(totalTagSize - headerSize); // tag size (without header)
-    bufferWriter.set(writeBytes, offset);
+    writeBytes = uint28ToUint7List(totalTagSize - headerSize); // tag size (without header)
+    bufferWriter.setAll(offset, writeBytes as Uint8List);
     offset += writeBytes.length;
 
     for (var frame in frames) {
       {
-        writeBytes = encodeWindows1252(frame.name); // frame name
-        bufferWriter.set(writeBytes, offset);
+        writeBytes = encodeWindows1252(frame["name"]); // frame name
+        bufferWriter.setAll(offset, writeBytes as Uint8List);
         offset += writeBytes.length;
 
-        writeBytes = uint32ToUint8Array(frame.length - headerSize); // frame size (without header)
-        bufferWriter.set(writeBytes, offset);
+        writeBytes = uint32ToUint8List(frame.length - headerSize); // frame size (without header)
+        bufferWriter.setAll(offset, writeBytes);
         offset += writeBytes.length;
 
         offset += 2; // flags
 
-        switch (frame.name) {
+        switch (frame["name"]) {
         case 'WCOM':
         case 'WCOP':
         case 'WOAF':
@@ -276,8 +270,8 @@ class ID3Writer {
         case 'WORS':
         case 'WPAY':
         case 'WPUB': {
-        writeBytes = encodeWindows1252(frame.value); // URL
-        bufferWriter.set(writeBytes, offset);
+        writeBytes = encodeWindows1252(frame["value"]); // URL
+        bufferWriter.setAll(offset, writeBytes as Uint8List);
         offset += writeBytes.length;
         break;
                      }
@@ -300,12 +294,12 @@ class ID3Writer {
         case 'TCOP':
         case 'TEXT':
         case 'TSRC': {
-                       writeBytes = [1].concat(BOM); // encoding, BOM
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = [1] + BOM; // encoding, BOM
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
-                       writeBytes = encodeUtf16le(frame.value); // frame value
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = encodeUtf16le(frame["value"]); // frame value
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
                        break;
                      }
@@ -313,23 +307,23 @@ class ID3Writer {
         case 'USLT':
         case 'COMM': {
                        writeBytes = [1]; // encoding
-                       if (frame.name == 'USLT' || frame.name == 'COMM') {
-                         writeBytes = writeBytes.concat(frame.language); // language
+                       if (frame["name"] == 'USLT' || frame["name"] == 'COMM') {
+                         writeBytes = writeBytes + frame["language"]; // language
                        }
-                       writeBytes = writeBytes.concat(BOM); // BOM for content descriptor
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = writeBytes + BOM; // BOM for content descriptor
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
-                       writeBytes = encodeUtf16le(frame.description); // content descriptor
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = encodeUtf16le(frame["description"]); // content descriptor
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
-                       writeBytes = [0, 0].concat(BOM); // separator, BOM for frame value
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = [0, 0] + BOM; // separator, BOM for frame value
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
-                       writeBytes = encodeUtf16le(frame.value); // frame value
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = encodeUtf16le(frame["value"]); // frame value
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
                        break;
                      }
@@ -339,80 +333,64 @@ class ID3Writer {
         case 'TYER': {
                        offset++; // encoding
 
-                       writeBytes = encodeWindows1252(frame.value); // frame value
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = encodeWindows1252(frame["value"]); // frame value
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
                        break;
                      }
         case 'PRIV': {
-                       writeBytes = encodeWindows1252(frame.id); // identifier
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = encodeWindows1252(frame["id"]); // identifier
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
                        offset++; // separator
 
-                       bufferWriter.set(new Uint8Array(frame.value), offset); // frame data
-                       offset += frame.value.byteLength;
+                       bufferWriter.setAll(offset, Uint8List(frame["value"])); // frame data
+                       offset += frame["value"].byteLength as int;
                        break;
                      }
         case 'APIC': {
-                       writeBytes = [frame.useUnicodeEncoding ? 1 : 0]; // encoding
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = [frame["useUnicodeEncoding"] ? 1 : 0]; // encoding
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
-                       writeBytes = encodeWindows1252(frame.mimeType); // MIME type
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = encodeWindows1252(frame["mimeType"]); // MIME type
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
-                       writeBytes = [0, frame.pictureType]; // separator, pic type
-                       bufferWriter.set(writeBytes, offset);
+                       writeBytes = [0, frame["pictureType"]]; // separator, pic type
+                       bufferWriter.setAll(offset, writeBytes as Uint8List);
                        offset += writeBytes.length;
 
-                       if (frame.useUnicodeEncoding) {
-                         writeBytes = [].concat(BOM); // BOM
-                         bufferWriter.set(writeBytes, offset);
+                       if (frame["useUnicodeEncoding"]) {
+                         writeBytes = [] + BOM; // BOM
+                         bufferWriter.setAll(offset, writeBytes as Uint8List);
                          offset += writeBytes.length;
 
-                         writeBytes = encodeUtf16le(frame.description); // description
-                         bufferWriter.set(writeBytes, offset);
+                         writeBytes = encodeUtf16le(frame["description"]); // description
+                         bufferWriter.setAll(offset, writeBytes as Uint8List);
                          offset += writeBytes.length;
 
                          offset += 2; // separator
                        } else {
-                         writeBytes = encodeWindows1252(frame.description); // description
-                         bufferWriter.set(writeBytes, offset);
+                         writeBytes = encodeWindows1252(frame["description"]); // description
+                         bufferWriter.setAll(offset, writeBytes as Uint8List);
                          offset += writeBytes.length;
 
                          offset++; // separator
                        }
 
-                       bufferWriter.set(new Uint8Array(frame.value), offset); // picture content
-                       offset += frame.value.byteLength;
+                       bufferWriter.setAll(offset, Uint8List.fromList(frame["value"])); // picture content
+                       offset += frame["value"].byteLength as int;
                        break;
                      }
         }
-    };
+    }
     }
 
-    offset += this.padding; // free space for rewriting
-    bufferWriter.set(new Uint8Array(this.arrayBuffer), offset);
-    this.arrayBuffer = buffer;
+    offset += padding; // free space for rewriting
+    bufferWriter.setAll(offset, arrayBuffer);
+    /*arrayBuffer = buffer;*/
     return buffer;
   }
-
-  getBlob() {
-    return new Blob([this.arrayBuffer], {type: 'audio/mpeg'});
-  }
-
-  getURL() {
-    if (!this.url) {
-      this.url = URL.createObjectURL(this.getBlob());
-    }
-    return this.url;
-  }
-
-  revokeURL() {
-    URL.revokeObjectURL(this.url);
-  }
-
 }
