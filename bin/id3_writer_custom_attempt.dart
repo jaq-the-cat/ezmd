@@ -2,13 +2,27 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:utf_convert/utf_convert.dart';
 
-Uint8List intToUint7List(int uint28) {
-    const sevenBitMask = 0x7f;
+int intToUint28(int n) {
+  List<int> nibs = [
+    n & 0xf,
+    n & 0xf0 << 1,
+    n & 0xf00 << 1,
+    n & 0xf000 << 1
+  ];
+  print("nibs:");
+  for (var nib in nibs) {
+    stdout.write("${nib.toRadixString(2)} ");
+  }
+  print("");
+  return nibs[0] | nibs[1] | nibs[2] | nibs[3];
+}
+
+Uint8List intToUint7List(int n) {
     return Uint8List.fromList([
-        (uint28 >>> 21) & sevenBitMask,
-        (uint28 >>> 14) & sevenBitMask,
-        (uint28 >>> 7) & sevenBitMask,
-        uint28 & sevenBitMask,
+      n,
+      (n >>> 8),
+      (n >>> 16),
+      (n >>> 24)
     ]);
 }
 
@@ -82,6 +96,7 @@ class ID3File {
   }
 
   void test() {
-
+    print(1061.toRadixString(2));
+    print(intToUint28(1061).toRadixString(2));
   }
 }
