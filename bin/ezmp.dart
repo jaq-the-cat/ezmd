@@ -66,8 +66,6 @@ void downloadSong(String query) async {
 
   var stream = await yt.downloadSong(spotifiedQuery!);
 
-  /*var f = File("$songName-1.mp3");*/
-  /*f.writeAsBytesSync([]);*/
   var f = File("$songName.mp3");
   f.writeAsBytesSync(await makeId3Information(tags));
   var fstream = f.openWrite(mode: FileMode.append);
