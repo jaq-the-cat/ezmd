@@ -1,9 +1,6 @@
 import 'dart:typed_data';
 import 'package:utf_convert/utf_convert.dart';
 import 'dart:convert';
-import 'package:convert/convert.dart';
-
-import 'id3_writer.dart';
 
 final int tagLength = 1071;
 final int headerLength = 10;
@@ -72,14 +69,14 @@ abstract class Id3Frame {
         return textFrame([0x54, 0x49, 0x54, 0x32], data);
       case "artist":
         return textFrame([0x54, 0x50, 0x45, 0x31], data);
-      case "genre":
-        return textFrame([], ""); // TODO: figure out how to do this
+      /*case "genre":*/
+      /*return textFrame([], ""); // TODO: figure out how to do this*/
       case "album":
         return textFrame([0x54, 0x41, 0x4c, 0x42], data);
       case "year":
         return numberFrame([0x54, 0x59, 0x45, 0x52], data);
-      case "artwork":
-        return picUrlFrame([0x41, 0x50, 0x49, 0x43], data);
+      /*case "artwork":*/
+      /*return picUrlFrame([0x41, 0x50, 0x49, 0x43], data);*/
     }
     return null;
   }

@@ -42,32 +42,29 @@ final spotify = Spotify();
 void downloadSong(String query) async {
   String? songName = "Numb";
   String? spotifiedQuery = "Linkin Park - Numb";
-  Map<String, String> tags = {
-    "title": "Numb",
-    "artist": "Linkin Park",
-  };
+  Map<String, String> tags = {};
 
-  /*spotify.getSongMetadata(query).then((song) {*/
-  /*if (song != null) {*/
-  /*songName = song.name;*/
-  /*spotifiedQuery =*/
-  /*"$songName - ${song.artists!.map((a) => a.name).join(", ")}";*/
-  /*var artworkAll = song.album!.images!;*/
-  /*var artwork = artworkAll[artworkAll.length ~/ 2];*/
-  /*tags = {*/
-  /*"title": songName!,*/
-  /*"artist": song.artists!.map((a) => a.name).join(", "),*/
-  /*[>"genre": song.artists!.first.genres!.first,<]*/
-  /*"album": song.album!.name!,*/
-  /*"year": song.album!.releaseDate!.substring(0, 4),*/
-  /*"artwork": artwork.url!,*/
-  /*};*/
-  /*}*/
-  /*});*/
+  spotify.getSongMetadata(query).then((song) {
+    if (song != null) {
+      songName = song.name;
+      spotifiedQuery =
+          "$songName - ${song.artists!.map((a) => a.name).join(", ")}";
+      var artworkAll = song.album!.images!;
+      var artwork = artworkAll[artworkAll.length ~/ 2];
+      tags = {
+        "title": songName!,
+        "artist": song.artists!.map((a) => a.name).join(", "),
+        /*"genre": song.artists!.first.genres!.first,*/
+        "album": song.album!.name!,
+        "year": song.album!.releaseDate!.substring(0, 4),
+        "artwork": artwork.url!,
+      };
+    }
+  });
 
   if (spotifiedQuery == null) return;
 
-  var stream = await yt.downloadSong(spotifiedQuery);
+  var stream = await yt.downloadSong(spotifiedQuery!);
 
   /*var f = File("$songName-1.mp3");*/
   /*f.writeAsBytesSync([]);*/
@@ -81,8 +78,9 @@ void downloadSong(String query) async {
 
 void main(List<String> arguments) async {
   dotenv.load();
-  /*var input = stdin.readLineSync();*/
-  /*if (input != null) {*/
-  downloadSong("");
-  /*}*/
+  stdout.write("Song> ");
+  var input = stdin.readLineSync();
+  if (input != null) {
+    downloadSong(input);
+  }
 }
