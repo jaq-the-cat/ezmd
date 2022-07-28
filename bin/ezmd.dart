@@ -87,7 +87,7 @@ void main(List<String> arguments) async {
   var results = parser.parse(arguments);
 
   // Get target folder
-  if (results["folder"]) {
+  if (results["folder"] != null) {
     // If it was set in the CLI
     musicPath = results["folder"];
   } else {
@@ -109,7 +109,7 @@ void main(List<String> arguments) async {
   }
 
   // Get query
-  query = results.rest.first;
+  query = results.rest.join(" ");
 
   // Actually download song
   if (musicPath != null && musicPath.isNotEmpty && query.isNotEmpty) {
