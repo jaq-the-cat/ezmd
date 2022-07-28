@@ -13,6 +13,7 @@ environment:
 dev_dependencies:
   lints: ^1.0.0
 dependencies: 
+  convert: ^3.0.2
   dotenv: ^3.0.0
   spotify: ^0.7.0
   utf_convert: ^0.10.0+1
