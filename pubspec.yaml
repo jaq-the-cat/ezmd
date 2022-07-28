@@ -13,8 +13,10 @@ environment:
 dev_dependencies:
   lints: ^1.0.0
 dependencies: 
+  args: ^2.3.1
   convert: ^3.0.2
   dotenv: ^3.0.0
+  path: ^1.8.2
   spotify: ^0.7.0
   utf_convert: ^0.10.0+1
   youtube_explode_dart: ^1.10.9+1

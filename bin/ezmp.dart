@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dotenv/dotenv.dart' as dotenv;
 import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:path/path.dart' as path;
+import 'package:args/args.dart';
 import 'id3info.dart';
 
 class Youtube extends YoutubeExplode {
@@ -39,7 +41,7 @@ class Spotify extends SpotifyApi {
 final yt = Youtube();
 final spotify = Spotify();
 
-void downloadSong(String query) async {
+void downloadSongTo(String query, String path) async {
   String? songName = "Numb";
   String? spotifiedQuery = "Linkin Park - Numb";
   Map<String, String?> tags = {};
@@ -66,7 +68,7 @@ void downloadSong(String query) async {
 
   var stream = await yt.downloadSong(spotifiedQuery!);
 
-  var f = File("$songName.mp3");
+  var f = File("$path/$songName.mp3");
   f.writeAsBytesSync(await makeId3Information(tags));
   var fstream = f.openWrite(mode: FileMode.append);
   await stream.pipe(fstream);
@@ -76,9 +78,41 @@ void downloadSong(String query) async {
 
 void main(List<String> arguments) async {
   dotenv.load();
-  stdout.write("Song> ");
-  var input = stdin.readLineSync();
-  if (input != null) {
-    downloadSong(input);
+  String? musicPath;
+  String? query;
+
+  var parser = ArgParser();
+  parser.addOption("folder",
+      abbr: "f", help: "Target folder", defaultsTo: null);
+  var results = parser.parse(arguments);
+
+  // Get target folder
+  if (results["folder"]) {
+    // If it was set in the CLI
+    musicPath = results["folder"];
+  } else {
+    // Otherwise, get it automatically
+    if (Platform.isMacOS || Platform.isLinux) {
+      musicPath = path.join(Platform.environment["HOME"]!, "Music");
+    } else if (Platform.isWindows) {
+      musicPath = path.join(Platform.environment["UserProfile"]!, "Music");
+    }
+
+    // If failed to detect platform
+    if (musicPath == null) {
+      stderr.writeln("[!] Failed to detect platform");
+
+      // Read path to Music/ directly from user
+      stdout.write("Full path to Music/> ");
+      musicPath = stdin.readLineSync();
+    }
+  }
+
+  // Get query
+  query = results.rest.first;
+
+  // Actually download song
+  if (musicPath != null && musicPath.isNotEmpty && query.isNotEmpty) {
+    downloadSongTo(query, musicPath);
   }
 }
