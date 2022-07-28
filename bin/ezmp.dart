@@ -42,7 +42,7 @@ final spotify = Spotify();
 void downloadSong(String query) async {
   String? songName = "Numb";
   String? spotifiedQuery = "Linkin Park - Numb";
-  Map<String, String> tags = {};
+  Map<String, String?> tags = {};
 
   spotify.getSongMetadata(query).then((song) {
     if (song != null) {
@@ -53,8 +53,8 @@ void downloadSong(String query) async {
       var artwork = artworkAll[artworkAll.length ~/ 2];
       tags = {
         "title": songName!,
-        "artist": song.artists!.map((a) => a.name).join(", "),
-        /*"genre": song.artists!.first.genres!.first,*/
+        "artist": song.artists!.map((a) => a.name).join("/"),
+        "genre": song.artists!.first.genres?.first,
         "album": song.album!.name!,
         "year": song.album!.releaseDate!.substring(0, 4),
         "artwork": artwork.url!,

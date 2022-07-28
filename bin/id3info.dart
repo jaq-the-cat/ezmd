@@ -82,7 +82,7 @@ abstract class Id3Frame {
   }
 }
 
-Future<Uint8List> makeId3Information(Map<String, String> frames) async {
+Future<Uint8List> makeId3Information(Map<String, String?> frames) async {
   final id3 = Uint8List(tagLength);
 
   // header
@@ -94,7 +94,8 @@ Future<Uint8List> makeId3Information(Map<String, String> frames) async {
   ]); // 10 header bytes
 
   int offset = 10;
-  frames.forEach((String id, String value) {
+  frames.forEach((String id, String? value) {
+    if (value == null) return;
     Uint8List? bin = Id3Frame.binary(id, value);
     if (bin != null) {
       id3.setAll(offset, bin);
