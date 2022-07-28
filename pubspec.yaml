@@ -12,6 +12,8 @@ dependencies:
   args: ^2.3.1
   convert: ^3.0.2
   dotenv: ^3.0.0
+  http: ^0.13.4
+  image: ^3.2.0
   path: ^1.8.2
   spotify: ^0.7.0
   utf_convert: ^0.10.0+1

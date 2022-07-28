@@ -6,11 +6,18 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/args.dart';
 import 'id3info.dart';
+import 'imagedl.dart';
+
+bool verbose = false;
+
+void log(Object? o) {
+  if (verbose) print(o.toString());
+}
 
 class Youtube extends YoutubeExplode {
   Future<VideoId> getSongId(String query) async {
-    SearchList vs;
-    vs = await search.getVideos(query);
+    VideoSearchList vs;
+    vs = await search.search(query);
     return vs.first.id;
   }
 
@@ -41,39 +48,49 @@ class Spotify extends SpotifyApi {
 final yt = Youtube();
 final spotify = Spotify();
 
-void downloadSongTo(String query, String path) async {
-  String? songName = "Numb";
-  String? spotifiedQuery = "Linkin Park - Numb";
-  Map<String, String?> tags = {};
+void downloadSongTo(String query, String path, {bool lyrics = false}) async {
+  String? songName;
+  String? spotifiedQuery;
+  Map<String, dynamic> tags = {};
 
-  spotify.getSongMetadata(query).then((song) {
-    if (song != null) {
-      songName = song.name;
-      spotifiedQuery =
-          "$songName - ${song.artists!.map((a) => a.name).join(", ")}";
-      var artworkAll = song.album!.images!;
-      var artwork = artworkAll[artworkAll.length ~/ 2];
-      tags = {
-        "title": songName!,
-        "artist": song.artists!.map((a) => a.name).join("/"),
-        "genre": song.artists!.first.genres?.first,
-        "album": song.album!.name!,
-        "year": song.album!.releaseDate!.substring(0, 4),
-        "artwork": artwork.url!,
-      };
-    }
-  });
+  var song = await spotify.getSongMetadata(query);
+  if (song != null) {
+    songName = song.name;
+    log("Found song: $songName");
 
-  if (spotifiedQuery == null) return;
+    // convert query to a nicer format
+    spotifiedQuery =
+        "${song.artists!.map((a) => a.name).join(", ")} - $songName";
+    var artworkAll = song.album!.images!;
+    // get middle artwork in case theres a lot
+    var artwork = artworkAll[artworkAll.length ~/ 2];
+    var genres = song.artists?.first.genres;
+    tags = {
+      "title": songName!,
+      // artists name must be separated by "/" (ID3v2 standard)
+      "artist": song.artists!.map((a) => a.name).join("/"),
+      "genres": genres,
+      "album": song.album!.name!,
+      "year": song.album!.releaseDate!.substring(0, 4),
+      "track": song.trackNumber.toString(),
+      "artwork": await downloadImage(artwork.url!),
+    };
+    log("Found metadata: $tags");
+  }
 
+  // appending " Lyrics" to the query can sometimes improve music search results in Youtube
+  if (lyrics) spotifiedQuery = spotifiedQuery! + " Lyrics";
+
+  log("Downloading first Youtube result from query '$spotifiedQuery'");
   var stream = await yt.downloadSong(spotifiedQuery!);
 
-  var f = File("$path/$songName.mp3");
+  var f = File("$path/${song!.artists!.first.name} - $songName.mp3");
   f.writeAsBytesSync(await makeId3Information(tags));
   var fstream = f.openWrite(mode: FileMode.append);
   await stream.pipe(fstream);
   await fstream.flush();
   await fstream.close();
+  log("Done");
 }
 
 void main(List<String> arguments) async {
@@ -84,7 +101,16 @@ void main(List<String> arguments) async {
   var parser = ArgParser();
   parser.addOption("folder",
       abbr: "f", help: "Target folder", defaultsTo: null);
+  parser.addFlag("lyrics",
+      abbr: "l",
+      help: "Whether to append ' Lyrics' to the Youtube query",
+      defaultsTo: false);
+  parser.addFlag("verbose",
+      abbr: "v", help: "Print out extra information", defaultsTo: false);
   var results = parser.parse(arguments);
+
+  // Verbose?
+  verbose = results["verbose"] == true;
 
   // Get target folder
   if (results["folder"] != null) {
@@ -113,6 +139,7 @@ void main(List<String> arguments) async {
 
   // Actually download song
   if (musicPath != null && musicPath.isNotEmpty && query.isNotEmpty) {
-    downloadSongTo(query, musicPath);
+    log("Downloading '$query' to '$musicPath'");
+    downloadSongTo(query, musicPath, lyrics: results["lyrics"]);
   }
 }
