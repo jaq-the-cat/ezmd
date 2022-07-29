@@ -7,6 +7,11 @@ class Image {
   final String mimetype;
   final Uint8List binary;
   Image(this.mimetype, this.binary);
+  
+  @override
+  String toString() {
+    return "<$mimetype>";
+  }
 }
 
 Future<Image> downloadImage(String url) async {

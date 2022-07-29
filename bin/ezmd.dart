@@ -77,6 +77,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
       "year": song.album!.releaseDate!.substring(0, 4),
       "track": song.trackNumber.toString(),
       "artwork": artwork.url ?? "",
+      "duration": song.durationMs,
     };
     log("Found metadata: $tags");
     filename = "$path/${song.artists!.first.name} - $songName.mp3";
@@ -104,7 +105,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
   // write v1 information
   f.writeAsBytesSync(makeId3v1Information(tags), mode: FileMode.append);
 
-  log("Done");
+  log("Downlodaded '$correctedQuery'");
 }
 
 String getMusicFolder() {
@@ -174,6 +175,4 @@ void main(List<String> arguments) async {
       }
       break;
   }
-
-  log("Done");
 }
