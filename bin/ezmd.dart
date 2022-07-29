@@ -5,8 +5,8 @@ import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/args.dart';
+import 'package:eztags/eztags.dart';
 import 'package:uuid/uuid.dart';
-import 'id3v2info.dart';
 
 bool verbose = false;
 final uuid = Uuid();
@@ -61,7 +61,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
   String? songName;
   String? correctedQuery;
   String? finalFilename;
-  FrameList frames = FrameList();
+  TagList frames = TagList();
 
   final song = await spotify.getSongMetadata(query);
   if (song != null) {
@@ -75,7 +75,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
     // get middle artwork in case theres a lot
     final artwork = artworkAll[artworkAll.length ~/ 2];
     final genres = spotify.getGenres(song.artists!.first);
-    frames = FrameList.fromMap({
+    frames = TagList.fromMap({
       "title": songName!,
       // artists name must be separated by "/" (ID3v2 standard)
       "artist": song.artists!.map((a) => a.name).join("/"),
@@ -84,7 +84,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
       "track": song.trackNumber.toString(),
       "artwork": artwork.url ?? "",
       "duration": song.durationMs.toString(),
-      "genre": (await genres)?.first,
+      "genre": ((await genres)?.first) ?? "",
     });
     log("Found metadata: $frames");
     finalFilename = "$path/${song.artists!.first.name} - $songName";

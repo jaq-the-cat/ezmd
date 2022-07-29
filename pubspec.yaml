@@ -12,6 +12,7 @@ dependencies:
   args: ^2.3.1
   convert: ^3.0.2
   dotenv: ^3.0.0
+  eztags: ^1.0.0
   ffmpeg_cli: ^0.1.0
   http: ^0.13.4
   path: ^1.8.2
