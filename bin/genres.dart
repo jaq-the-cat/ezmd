@@ -1,4 +1,4 @@
-const genresRaw = <String>[
+const genres = <String>[
   "Blues",
   "Classic Rock",
   "Country",

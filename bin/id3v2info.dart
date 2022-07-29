@@ -3,14 +3,6 @@ import 'dart:convert';
 import 'genres.dart';
 import 'imagedl.dart';
 
-final Map<String, int> _genresMap = (() {
-  Map<String, int> genresProper = {};
-  for (int i = 0; i < genresRaw.length; i++) {
-    genresProper[genresRaw[i]] = i;
-  }
-  return genresProper;
-})();
-
 const int _headerLength = 10;
 /*const int padding = 128;*/
 
@@ -44,21 +36,23 @@ abstract class Id3Frame {
   }
 
   static Uint8List textFrame(List<int> code, String text) =>
-      makeFrame(code, [0x00] + utf8.encode(text));
+      makeFrame(code, [0x00] + latin1.encode(text));
 
-  static Uint8List genreFrame(List<String> genres) {
+  static Uint8List genreFrame(List<String> genreTags) {
     List<int> bin = [];
-    for (var g in genres) {
-      bin.addAll(utf8.encode("($g)"));
+    for (var g in genreTags) {
+      if (genres.contains(g)) {
+        bin.addAll(latin1.encode("(${genres.indexOf(g)})"));
+      }
     }
     return makeFrame([0x54, 0x43, 0x4F, 0x4E], bin);
   }
 
   static Uint8List picFrame(List<int> code, Image img) {
     final picType = [0x03]; // cover (front)
-    final descriptionBin = utf8.encode("Artwork") + [0x00];
+    final descriptionBin = latin1.encode("Artwork") + [0x00];
     final data = Uint8List.fromList([0x00] + // uses ISO-8859 encoding
-        utf8.encode(img.mimetype) +
+        latin1.encode(img.mimetype) +
         picType +
         descriptionBin +
         img.binary);

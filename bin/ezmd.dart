@@ -6,7 +6,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/args.dart';
 import 'id3v1info.dart';
-import 'imagedl.dart';
+import 'id3v2info.dart';
 
 bool verbose = false;
 
@@ -94,12 +94,16 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
   final stream = await yt.downloadSong(correctedQuery);
 
   final f = File(filename);
-  f.writeAsBytesSync(await makeId3v3Information(tags));
+  // write v2 information
+  f.writeAsBytesSync(await makeId3v2Information(tags));
   final fstream =
       f.openWrite(mode: tags.isEmpty ? FileMode.write : FileMode.append);
   await stream.pipe(fstream);
   await fstream.flush();
   await fstream.close();
+  // write v1 information
+  f.writeAsBytesSync(makeId3v1Information(tags), mode: FileMode.append);
+
   log("Done");
 }
 
