@@ -12,7 +12,7 @@ Uint8List makeId3v1Information(Map<String, dynamic> frames) {
   id3.setAll(63,  latin1.encode(frames["album"]));
   id3.setAll(93,  latin1.encode(frames["year"]));
   id3.setAll(97,  []); // comment
-  id3.setAll(127, [genres.indexOf(frames["genre"])]);
+  id3.setAll(127, [genres.indexOf(frames["genre"] ?? "")]);
 
   return id3;
 }

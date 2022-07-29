@@ -130,7 +130,7 @@ String getMusicFolder() {
 
 void main(List<String> arguments) async {
   dotenv.load();
-  String? musicPath;
+  String? outPath;
   String? query;
 
   final parser = ArgParser();
@@ -139,14 +139,13 @@ void main(List<String> arguments) async {
   parser.addOption("intype",
       abbr: "t",
       help:
-          "Input type. 'File' indicates the input is a list of file to be read "
-          "line by line. 'Query' means the input will be interpreted as a query"
-          " to be downloaded.",
+          "Input type. 'file' indicates the input is a file to be read line by "
+          "line. 'query' means the input will be interpreted as a single query",
       allowed: ["file", "query"],
       defaultsTo: "query");
   parser.addFlag("lyrics",
       abbr: "l",
-      help: "Whether to append ' Lyrics' to the Youtube query",
+      help: "Append ' Lyrics' to the Youtube query",
       defaultsTo: false);
   parser.addFlag("verbose",
       abbr: "v", help: "Print out extra information", defaultsTo: false);
@@ -155,8 +154,8 @@ void main(List<String> arguments) async {
   verbose = results["verbose"] == true;
 
   // Get target folder
-  musicPath = results["folder"] ?? getMusicFolder();
-  if (musicPath == null || musicPath.isEmpty) {
+  outPath = results["folder"] ?? getMusicFolder();
+  if (outPath == null || outPath.isEmpty) {
     stderr.writeln("Unable to get target path");
     return;
   }
@@ -165,12 +164,12 @@ void main(List<String> arguments) async {
   switch (results["intype"]) {
     case "query":
       query = results.rest.join(" ");
-      downloadSongTo(query, musicPath);
+      downloadSongTo(query, outPath);
       break;
     case "file":
       for (String filename in results.rest) {
         for (String query in File(filename).readAsLinesSync()) {
-          downloadSongTo(query.trim(), musicPath);
+          downloadSongTo(query.trim(), outPath);
         }
       }
       break;
