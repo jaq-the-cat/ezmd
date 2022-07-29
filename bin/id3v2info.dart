@@ -3,29 +3,22 @@ import 'dart:convert';
 import 'genres.dart';
 import 'imagedl.dart';
 
-final int headerLength = 10;
-
-Uint8List toUint7List(int n) {
-  final list = Uint8List(4);
-  // taken from https://github.com/egoroof/browser-id3-writer
-  const sevenBitMask = 0x7f;
-  // taken
-  list.setAll(0, [
-    (n >>> 21) & sevenBitMask,
-    (n >>> 15) & sevenBitMask,
-    (n >>> 7) & sevenBitMask,
-    (n) & sevenBitMask
-  ]);
-  return list;
-}
-
-final Map<String, int> genresMap = (() {
+final Map<String, int> _genresMap = (() {
   Map<String, int> genresProper = {};
   for (int i = 0; i < genresRaw.length; i++) {
     genresProper[genresRaw[i]] = i;
   }
   return genresProper;
 })();
+
+const int _headerLength = 10;
+/*const int padding = 128;*/
+
+/*Uint8List toUint7List(int n) {*/
+/*final list = Uint8List(4);*/
+/*list.setAll(0, [n >>> (24 - 3), n >>> (16 - 2), n >>> (8 - 1), n]);*/
+/*return list;*/
+/*}*/
 
 Uint8List numberToBytes(int n) {
   final bytes = Uint8List(4);
@@ -95,13 +88,14 @@ abstract class Id3Frame {
   }
 }
 
-Future<Uint8List> makeId3Information(Map<String, dynamic> frames) async {
-  List<int> id3 = [];
+Future<Uint8List> makeId3v2Information(Map<String, dynamic> frames) async {
+  if (frames.isEmpty) return Uint8List(0);
+  List<int> id3list = [];
 
   // header
-  id3.addAll([
+  id3list.addAll([
     0x49, 0x44, 0x33, // ID3
-    0x03, 0x00, // v3
+    0x03, 0x00, // v2.3
     0x00, // no flags
     0xff, 0xff, 0xff, 0xff // temporary size
   ]); // 10 header bytes
@@ -110,11 +104,13 @@ Future<Uint8List> makeId3Information(Map<String, dynamic> frames) async {
     if (value == null) return;
     Uint8List? bin = Id3Frame.binary(id, value);
     if (bin != null) {
-      id3.addAll(bin);
+      id3list.addAll(bin);
     }
   });
 
-  id3.setAll(6, toUint7List(id3.length));
+  var id3 = Uint8List(1071);
+  id3.setAll(0, id3list);
+  id3.setAll(6, [0x0, 0x0, 0x8, 0x25]);
 
-  return Uint8List.fromList(id3);
+  return id3;
 }

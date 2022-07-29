@@ -5,7 +5,7 @@ import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/args.dart';
-import 'id3info.dart';
+import 'id3v1info.dart';
 import 'imagedl.dart';
 
 bool verbose = false;
@@ -39,7 +39,7 @@ class Spotify extends SpotifyApi {
   Future<Track?> getSongMetadata(String query) async {
     Page page =
         (await search.get(query, types: [SearchType.track]).first()).first;
-    var item = page.items?.first;
+    final item = page.items?.first;
     if (item is Track) return item;
     return null;
   }
@@ -49,22 +49,25 @@ final yt = Youtube();
 final spotify = Spotify();
 
 void downloadSongTo(String query, String path, {bool lyrics = false}) async {
+  log("Downloading '$query' to '$path'");
+
   String? songName;
-  String? spotifiedQuery;
+  String? correctedQuery;
+  String? filename;
   Map<String, dynamic> tags = {};
 
-  var song = await spotify.getSongMetadata(query);
+  final song = await spotify.getSongMetadata(query);
   if (song != null) {
     songName = song.name;
     log("Found song: $songName");
 
     // convert query to a nicer format
-    spotifiedQuery =
+    correctedQuery =
         "${song.artists!.map((a) => a.name).join(", ")} - $songName";
-    var artworkAll = song.album!.images!;
+    final artworkAll = song.album!.images!;
     // get middle artwork in case theres a lot
-    var artwork = artworkAll[artworkAll.length ~/ 2];
-    var genres = song.artists?.first.genres;
+    final artwork = artworkAll[artworkAll.length ~/ 2];
+    final genres = song.artists!.first.genres;
     tags = {
       "title": songName!,
       // artists name must be separated by "/" (ID3v2 standard)
@@ -73,24 +76,52 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
       "album": song.album!.name!,
       "year": song.album!.releaseDate!.substring(0, 4),
       "track": song.trackNumber.toString(),
-      "artwork": await downloadImage(artwork.url!),
+      "artwork": artwork.url ?? "",
     };
     log("Found metadata: $tags");
+    filename = "$path/${song.artists!.first.name} - $songName.mp3";
+  } else {
+    stderr.writeln(
+        "Couldn't find song on Spotify, using query as filename instead");
+    correctedQuery = query;
+    filename = "$correctedQuery.mp3";
   }
 
   // appending " Lyrics" to the query can sometimes improve music search results in Youtube
-  if (lyrics) spotifiedQuery = spotifiedQuery! + " Lyrics";
+  if (lyrics) correctedQuery = correctedQuery + " Lyrics";
 
-  log("Downloading first Youtube result from query '$spotifiedQuery'");
-  var stream = await yt.downloadSong(spotifiedQuery!);
+  log("Downloading first Youtube result from query '$correctedQuery'");
+  final stream = await yt.downloadSong(correctedQuery);
 
-  var f = File("$path/${song!.artists!.first.name} - $songName.mp3");
-  f.writeAsBytesSync(await makeId3Information(tags));
-  var fstream = f.openWrite(mode: FileMode.append);
+  final f = File(filename);
+  f.writeAsBytesSync(await makeId3v3Information(tags));
+  final fstream =
+      f.openWrite(mode: tags.isEmpty ? FileMode.write : FileMode.append);
   await stream.pipe(fstream);
   await fstream.flush();
   await fstream.close();
   log("Done");
+}
+
+String getMusicFolder() {
+  String? musicPath;
+
+  if (Platform.isMacOS || Platform.isLinux) {
+    musicPath = path.join(Platform.environment["HOME"]!, "Music");
+  } else if (Platform.isWindows) {
+    musicPath = path.join(Platform.environment["UserProfile"]!, "Music");
+  }
+
+  // If failed to detect platform
+  if (musicPath == null) {
+    stderr.writeln("[!] Failed to detect platform");
+
+    // Read path directly from the user
+    stdout.write("Target path/> ");
+    musicPath = stdin.readLineSync();
+  }
+
+  return musicPath ?? "";
 }
 
 void main(List<String> arguments) async {
@@ -98,48 +129,48 @@ void main(List<String> arguments) async {
   String? musicPath;
   String? query;
 
-  var parser = ArgParser();
+  final parser = ArgParser();
   parser.addOption("folder",
-      abbr: "f", help: "Target folder", defaultsTo: null);
+      abbr: "o", help: "Target folder", defaultsTo: null);
+  parser.addOption("intype",
+      abbr: "t",
+      help:
+          "Input type. 'File' indicates the input is a list of file to be read "
+          "line by line. 'Query' means the input will be interpreted as a query"
+          " to be downloaded.",
+      allowed: ["file", "query"],
+      defaultsTo: "query");
   parser.addFlag("lyrics",
       abbr: "l",
       help: "Whether to append ' Lyrics' to the Youtube query",
       defaultsTo: false);
   parser.addFlag("verbose",
       abbr: "v", help: "Print out extra information", defaultsTo: false);
-  var results = parser.parse(arguments);
+  final results = parser.parse(arguments);
 
-  // Verbose?
   verbose = results["verbose"] == true;
 
   // Get target folder
-  if (results["folder"] != null) {
-    // If it was set in the CLI
-    musicPath = results["folder"];
-  } else {
-    // Otherwise, get it automatically
-    if (Platform.isMacOS || Platform.isLinux) {
-      musicPath = path.join(Platform.environment["HOME"]!, "Music");
-    } else if (Platform.isWindows) {
-      musicPath = path.join(Platform.environment["UserProfile"]!, "Music");
-    }
-
-    // If failed to detect platform
-    if (musicPath == null) {
-      stderr.writeln("[!] Failed to detect platform");
-
-      // Read path to Music/ directly from user
-      stdout.write("Full path to Music/> ");
-      musicPath = stdin.readLineSync();
-    }
+  musicPath = results["folder"] ?? getMusicFolder();
+  if (musicPath == null || musicPath.isEmpty) {
+    stderr.writeln("Unable to get target path");
+    return;
   }
 
-  // Get query
-  query = results.rest.join(" ");
-
-  // Actually download song
-  if (musicPath != null && musicPath.isNotEmpty && query.isNotEmpty) {
-    log("Downloading '$query' to '$musicPath'");
-    downloadSongTo(query, musicPath, lyrics: results["lyrics"]);
+  // Get query and download song
+  switch (results["intype"]) {
+    case "query":
+      query = results.rest.join(" ");
+      downloadSongTo(query, musicPath);
+      break;
+    case "file":
+      for (String filename in results.rest) {
+        for (String query in File(filename).readAsLinesSync()) {
+          downloadSongTo(query.trim(), musicPath);
+        }
+      }
+      break;
   }
+
+  log("Done");
 }
