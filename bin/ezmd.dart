@@ -6,7 +6,6 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/args.dart';
 import 'package:uuid/uuid.dart';
-import 'genres.dart';
 import 'id3v2info.dart';
 
 bool verbose = false;
