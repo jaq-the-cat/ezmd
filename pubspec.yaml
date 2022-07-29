@@ -14,7 +14,6 @@ dependencies:
   dotenv: ^3.0.0
   ffmpeg_cli: ^0.1.0
   http: ^0.13.4
-  image: ^3.2.0
   path: ^1.8.2
   recase: ^4.0.0
   spotify: ^0.7.0

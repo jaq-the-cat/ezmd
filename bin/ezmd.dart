@@ -62,7 +62,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
   String? songName;
   String? correctedQuery;
   String? finalFilename;
-  Map<String, dynamic> tags = {};
+  FrameList frames = FrameList();
 
   final song = await spotify.getSongMetadata(query);
   if (song != null) {
@@ -76,7 +76,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
     // get middle artwork in case theres a lot
     final artwork = artworkAll[artworkAll.length ~/ 2];
     final genres = spotify.getGenres(song.artists!.first);
-    tags = {
+    frames = FrameList.fromMap({
       "title": songName!,
       // artists name must be separated by "/" (ID3v2 standard)
       "artist": song.artists!.map((a) => a.name).join("/"),
@@ -86,8 +86,8 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
       "artwork": artwork.url ?? "",
       "duration": song.durationMs.toString(),
       "genre": (await genres)?.first,
-    };
-    log("Found metadata: $tags");
+    });
+    log("Found metadata: $frames");
     finalFilename = "$path/${song.artists!.first.name} - $songName";
   } else {
     stderr.writeln(
@@ -118,7 +118,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
   log("Writing tags to $finalFilename.mp3");
   final mp3Bytes = File("/tmp/$tempid.mp3").readAsBytesSync();
   final f = File("$finalFilename.mp3");
-  f.writeAsBytesSync(await makeId3v2Information(tags) + mp3Bytes);
+  f.writeAsBytesSync(await makeId3v2(frames) + mp3Bytes);
 
   log("Downlodaded '$correctedQuery'");
 }

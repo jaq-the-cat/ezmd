@@ -1,51 +1,113 @@
+// TODO: Add documentation
+
 import 'dart:typed_data';
 import 'dart:convert';
 import 'package:recase/recase.dart';
-/*import 'genres.dart';*/
 import 'imagedl.dart';
-
-class Uint28 {
-  final int _n;
-  Uint28(this._n);
-
-  static Uint28 fromInt(int n) {
-    return Uint28((n << 3) & 0x7f000000 |
-        (n << 2) & 0x007f0000 |
-        (n << 1) & 0x00007f00 |
-        n & 0x0000007f);
-  }
-
-  Uint8List get bytes =>
-      Uint8List.fromList([_n >>> 24, _n >>> 16, _n >>> 8, _n]);
-
-  int get raw => _n;
-
-  String toRadixString(int n) {
-    return _n.toRadixString(n);
-  }
-}
+import 'bytestuff.dart';
 
 const int _headerLength = 10;
 const int _padding = 128;
 
-Uint8List toUint7List(int n) => Uint28.fromInt(n).bytes;
+enum FrameType { title, artist, genre, album, year, artwork, track, duration }
 
-Uint8List numberToBytes(int n) {
-  final bytes = Uint8List(4);
-  bytes.setAll(0, [
-    n >>> 24,
-    n >>> 16,
-    n >>> 8,
-    n,
-  ]);
-  return bytes;
+extension _FrameTypeExt on FrameType {
+  Uint8List get code {
+    switch (this) {
+      case FrameType.title:
+        return latin1.encode("TIT2");
+      case FrameType.artist:
+        return latin1.encode("TPE1");
+      case FrameType.genre:
+        return latin1.encode("TCON");
+      case FrameType.album:
+        return latin1.encode("TALB");
+      case FrameType.year:
+        return latin1.encode("TYER");
+      case FrameType.artwork:
+        return latin1.encode("APIC");
+      case FrameType.track:
+        return latin1.encode("TRCK");
+      case FrameType.duration:
+        return latin1.encode("TLEN");
+    }
+  }
 }
 
-abstract class Id3Frame {
-  static Uint8List makeFrame(String code, List<int> data) {
+FrameType? frameTypeFromString(String type) {
+  switch (type) {
+    case "title":
+      return FrameType.title;
+    case "artist":
+      return FrameType.artist;
+    case "genre":
+      return FrameType.genre;
+    case "album":
+      return FrameType.album;
+    case "year":
+      return FrameType.year;
+    case "artwork":
+      return FrameType.artwork;
+    case "track":
+      return FrameType.track;
+    case "duration":
+      return FrameType.duration;
+  }
+  return null;
+}
+
+class FrameList extends Iterable {
+  final _list = <Frame>[];
+  FrameList();
+
+  bool _hasFrameType(FrameType type) {
+    for (var frame in _list) {
+      if (frame.type == type) return true;
+    }
+    return false;
+  }
+
+  static FrameList fromList(List<Frame> frames) {
+    final list = FrameList();
+    for (final frame in frames) {
+      list.add(frame);
+    }
+    return list;
+  }
+
+  static FrameList fromMap(Map<String, dynamic> frames) {
+    final list = FrameList();
+    for (final frame in frames.entries) {
+      FrameType? type = frameTypeFromString(frame.key);
+      if (type == null) continue;
+      list.add(Frame(type, frame.value));
+    }
+    return list;
+  }
+
+  void add(Frame frame) {
+    if (!_hasFrameType(frame.type)) {
+      _list.add(frame);
+    }
+  }
+
+  void remove(Frame frame) {
+    _list.remove(frame);
+  }
+
+  @override
+  Iterator get iterator => _list.iterator;
+}
+
+class Frame {
+  final FrameType type;
+  dynamic data;
+  Frame(this.type, this.data);
+
+  Uint8List makeFrame(Uint8List code, List<int> data) {
     int length = data.length;
-    var binary = Uint8List(4 + 4 + 2 + length); // header size + data size
-    binary.setAll(0, latin1.encode(code)); // 4 bytes
+    final binary = Uint8List(4 + 4 + 2 + length); // header size + data size
+    binary.setAll(0, code); // 4 bytes
     binary.setAll(4, numberToBytes(length));
     binary.setAll(8, [0x00, 0x00]); // 2 bytes of flags
     binary.setAll(10, data);
@@ -53,48 +115,44 @@ abstract class Id3Frame {
     return binary;
   }
 
-  static Uint8List textFrame(String code, String text) =>
-      makeFrame(code, [0x00] + latin1.encode(text));
+  Uint8List get textFrame => makeFrame(type.code, [0x00] + latin1.encode(data));
 
-  static Uint8List picFrame(String code, Image img) {
+  Uint8List get picFrame {
     final descriptionBin = latin1.encode("Artwork");
-    final data = Uint8List.fromList([0x00] + // uses ISO-8859 encoding
-        latin1.encode(img.mimetype) +
+    final bin = Uint8List.fromList([0x00] + // uses ISO-8859 encoding
+        latin1.encode(data.mimetype) +
         [0x00] +
         [0x03] + // cover (front)
         descriptionBin +
         [0x00] +
-        img.binary);
-    return makeFrame(code, data);
+        data.binary);
+    return makeFrame(type.code, bin);
   }
 
-  static Future<Uint8List?> binary(String id, dynamic data) async {
-    switch (id) {
-      case "title":
-        return textFrame("TIT2", data);
-      case "artist":
-        return textFrame("TPE1", data);
-      case "genre":
+  Future<Uint8List?> get binary async {
+    switch (type) {
+      case FrameType.title:
+      case FrameType.artist:
+      case FrameType.album:
+      case FrameType.year:
+      case FrameType.track:
+      case FrameType.duration:
+        return textFrame;
+      case FrameType.genre:
         if (data != null) {
-          return textFrame("TCON", ReCase(data).titleCase.toString());
+          data = ReCase(data).titleCase.toString();
+          return textFrame;
         }
         break;
-      case "album":
-        return textFrame("TALB", data);
-      case "year":
-        return textFrame("TYER", data);
-      case "artwork":
-        return picFrame("APIC", await downloadImage(data));
-      case "track":
-        return textFrame("TRCK", data);
-      case "duration":
-        return textFrame("TLEN", data);
+      case FrameType.artwork:
+        data = await downloadImage(data);
+        return picFrame;
     }
     return null;
   }
 }
 
-Future<Uint8List> makeId3v2Information(Map<String, dynamic> frames) async {
+Future<Uint8List> makeId3v2(FrameList frames) async {
   if (frames.isEmpty) return Uint8List(0);
   List<int> id3list = [];
 
@@ -106,16 +164,16 @@ Future<Uint8List> makeId3v2Information(Map<String, dynamic> frames) async {
     0xff, 0xff, 0xff, 0xff // temporary size
   ]); // 10 header bytes
 
-  for (var e in frames.entries) {
-    if (e.value == null) continue;
-    Uint8List? bin = await Id3Frame.binary(e.key, e.value);
+  for (final frame in frames) {
+    if (frame.data == null) continue;
+    Uint8List? bin = await frame.binary;
     if (bin != null) {
       id3list.addAll(bin);
     }
   }
 
-  int tagLen = id3list.length + _padding;
-  var id3 = Uint8List(tagLen + _headerLength);
+  final tagLen = id3list.length + _padding;
+  final id3 = Uint8List(tagLen + _headerLength);
   id3.setAll(0, id3list);
   id3.setRange(6, 10, Uint28.fromInt(tagLen).bytes);
 
