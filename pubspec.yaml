@@ -12,9 +12,12 @@ dependencies:
   args: ^2.3.1
   convert: ^3.0.2
   dotenv: ^3.0.0
+  ffmpeg_cli: ^0.1.0
   http: ^0.13.4
   image: ^3.2.0
   path: ^1.8.2
+  recase: ^4.0.0
   spotify: ^0.7.0
   utf_convert: ^0.10.0+1
+  uuid: ^3.0.6
   youtube_explode_dart: ^1.10.9+1

@@ -5,10 +5,12 @@ import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
 import 'package:args/args.dart';
-import 'id3v1info.dart';
+import 'package:uuid/uuid.dart';
+import 'genres.dart';
 import 'id3v2info.dart';
 
 bool verbose = false;
+final uuid = Uuid();
 
 void log(Object? o) {
   if (verbose) print(o.toString());
@@ -21,7 +23,7 @@ class Youtube extends YoutubeExplode {
     return vs.first.id;
   }
 
-  Future<Stream> downloadSongFromId(VideoId id) async {
+  Future<Stream<List<int>>> downloadSongFromId(VideoId id) async {
     final manifest = await videos.streamsClient.getManifest(id);
     final sinfo = manifest.audioOnly.withHighestBitrate();
     return videos.streamsClient.get(sinfo);
@@ -43,6 +45,12 @@ class Spotify extends SpotifyApi {
     if (item is Track) return item;
     return null;
   }
+
+  Future<List<String>?> getGenres(ArtistSimple? artist) async {
+    if (artist == null) return null;
+    final artistFull = await Artists(spotify).get(artist.id!);
+    return artistFull.genres;
+  }
 }
 
 final yt = Youtube();
@@ -53,7 +61,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
 
   String? songName;
   String? correctedQuery;
-  String? filename;
+  String? finalFilename;
   Map<String, dynamic> tags = {};
 
   final song = await spotify.getSongMetadata(query);
@@ -67,25 +75,25 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
     final artworkAll = song.album!.images!;
     // get middle artwork in case theres a lot
     final artwork = artworkAll[artworkAll.length ~/ 2];
-    final genres = song.artists!.first.genres;
+    final genres = spotify.getGenres(song.artists!.first);
     tags = {
       "title": songName!,
       // artists name must be separated by "/" (ID3v2 standard)
       "artist": song.artists!.map((a) => a.name).join("/"),
-      "genres": genres,
       "album": song.album!.name!,
       "year": song.album!.releaseDate!.substring(0, 4),
       "track": song.trackNumber.toString(),
       "artwork": artwork.url ?? "",
       "duration": song.durationMs.toString(),
+      "genre": (await genres)?.first,
     };
     log("Found metadata: $tags");
-    filename = "$path/${song.artists!.first.name} - $songName.mp3";
+    finalFilename = "$path/${song.artists!.first.name} - $songName";
   } else {
     stderr.writeln(
         "Couldn't find song on Spotify, using query as filename instead");
     correctedQuery = query;
-    filename = "$correctedQuery.mp3";
+    finalFilename = "$path/$correctedQuery";
   }
 
   // appending " Lyrics" to the query can sometimes improve music search results in Youtube
@@ -93,17 +101,24 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
 
   log("Downloading first Youtube result from query '$correctedQuery'");
   final stream = await yt.downloadSong(correctedQuery);
+  final tempid = uuid.v4();
+  final tempstream = File("/tmp/$tempid.webm").openWrite(mode: FileMode.write);
+  await stream.pipe(tempstream);
+  await tempstream.flush();
+  await tempstream.close();
+  log("Downlodaded .webm file to /tmp/$tempid.webm");
 
-  final f = File(filename);
-  // write v2 information
-  f.writeAsBytesSync(await makeId3v2Information(tags));
-  final fstream =
-      f.openWrite(mode: tags.isEmpty ? FileMode.write : FileMode.append);
-  await stream.pipe(fstream);
-  await fstream.flush();
-  await fstream.close();
-  // write v1 information
-  f.writeAsBytesSync(makeId3v1Information(tags), mode: FileMode.append);
+  // Convert webm to mp3 with ffmpeg
+  log("Converting .webm to .mp3");
+  final ffmpegargs =
+      "-i /tmp/$tempid.webm -vn -ab 128k -ar 44100 -y /tmp/$tempid.mp3";
+  await Process.run('ffmpeg', ffmpegargs.split(' '));
+  log("Converted");
+
+  log("Writing tags to $finalFilename.mp3");
+  final mp3Bytes = File("/tmp/$tempid.mp3").readAsBytesSync();
+  final f = File("$finalFilename.mp3");
+  f.writeAsBytesSync(await makeId3v2Information(tags) + mp3Bytes);
 
   log("Downlodaded '$correctedQuery'");
 }

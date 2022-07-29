@@ -1,82 +1,91 @@
-const genres = <String>[
-  "Blues",
-  "Classic Rock",
-  "Country",
-  "Dance",
-  "Disco",
-  "Funk",
-  "Grunge",
-  "Hip-Hop",
-  "Jazz",
-  "Metal",
-  "New Age",
-  "Oldies",
-  "Other",
-  "Pop",
-  "R&B",
-  "Rap",
-  "Reggae",
-  "Rock",
-  "Techno",
-  "Industrial",
-  "Alternative",
-  "Ska",
-  "Death Metal",
-  "Pranks",
-  "Soundtrack",
-  "Euro-Techno",
-  "Ambient",
-  "Trip-Hop",
-  "Vocal",
-  "Jazz+Funk",
-  "Fusion",
-  "Trance",
-  "Classical",
-  "Instrumental",
-  "Acid",
-  "House",
-  "Game",
-  "Sound Clip",
-  "Gospel",
-  "Noise",
-  "AlternRock",
-  "Bass",
-  "Soul",
-  "Punk",
-  "Space",
-  "Meditative",
-  "Instrumental Pop",
-  "Instrumental Rock",
-  "Ethnic",
-  "Gothic",
-  "Darkwave",
-  "Techno-Industrial",
-  "Electronic",
-  "Pop-Folk",
-  "Eurodance",
-  "Dream",
-  "Southern Rock",
-  "Comedy",
-  "Cult",
-  "Gangsta",
-  "Top 40",
-  "Christian Rap",
-  "Pop/Funk",
-  "Jungle",
-  "Native American",
-  "Cabaret",
-  "New Wave",
-  "Psychadelic",
-  "Rave",
-  "Showtunes",
-  "Trailer",
-  "Lo-Fi",
-  "Tribal",
-  "Acid Punk",
-  "Acid Jazz",
-  "Polka",
-  "Retro",
-  "Musical",
-  "Rock & Roll",
-  "Hard Rock"
-];
+/*final genres = <List<String>>[*/
+  /*["blues"],*/
+  /*["classic rock"],*/
+  /*["country"],*/
+  /*["dance"],*/
+  /*["disco"],*/
+  /*["funk"],*/
+  /*["grunge"],*/
+  /*["hip-hop"],*/
+  /*["jazz"],*/
+  /*["metal", "alternative metal", "rap metal"],*/
+  /*["new age"],*/
+  /*["oldies"],*/
+  /*["other"],*/
+  /*["pop"],*/
+  /*["r&b"],*/
+  /*["rap"],*/
+  /*["reggae"],*/
+  /*["rock"],*/
+  /*["techno"],*/
+  /*["industrial"],*/
+  /*["alternative"],*/
+  /*["ska"],*/
+  /*["death metal"],*/
+  /*["pranks"],*/
+  /*["soundtrack"],*/
+  /*["euro-techno"],*/
+  /*["ambient"],*/
+  /*["trip-hop"],*/
+  /*["vocal"],*/
+  /*["jazz+funk"],*/
+  /*["fusion"],*/
+  /*["trance"],*/
+  /*["classical"],*/
+  /*["instrumental"],*/
+  /*["acid"],*/
+  /*["house"],*/
+  /*["game"],*/
+  /*["sound clip"],*/
+  /*["gospel"],*/
+  /*["noise"],*/
+  /*["alternative rock"],*/
+  /*["bass"],*/
+  /*["soul"],*/
+  /*["punk"],*/
+  /*["space"],*/
+  /*["meditative"],*/
+  /*["instrumental pop"],*/
+  /*["instrumental rock"],*/
+  /*["ethnic"],*/
+  /*["gothic"],*/
+  /*["darkwave"],*/
+  /*["techno-industrial"],*/
+  /*["electronic"],*/
+  /*["pop-folk"],*/
+  /*["eurodance"],*/
+  /*["dream"],*/
+  /*["southern rock"],*/
+  /*["comedy"],*/
+  /*["cult"],*/
+  /*["gangsta"],*/
+  /*["top 40"],*/
+  /*["christian rap"],*/
+  /*["pop/funk"],*/
+  /*["jungle"],*/
+  /*["native american"],*/
+  /*["cabaret"],*/
+  /*["new wave"],*/
+  /*["psychadelic"],*/
+  /*["rave"],*/
+  /*["showtunes"],*/
+  /*["trailer"],*/
+  /*["lo-fi"],*/
+  /*["tribal"],*/
+  /*["acid punk"],*/
+  /*["acid jazz"],*/
+  /*["polka"],*/
+  /*["retro"],*/
+  /*["musical"],*/
+  /*["rock & roll"],*/
+  /*["hard rock"]*/
+/*];*/
+
+/*int indexOfGenre(String g) {*/
+  /*int i = 0;*/
+  /*for (var list in genres) {*/
+    /*if (list.contains(g)) return i;*/
+    /*i++;*/
+  /*}*/
+  /*return -1;*/
+/*}*/
