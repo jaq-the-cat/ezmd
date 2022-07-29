@@ -78,7 +78,7 @@ abstract class Id3Frame {
       case "track":
         return textFrame("TRCK", data);
       case "duration":
-        return textFrame("TLEN", data.toString());
+        return textFrame("TLEN", data);
     }
     return null;
   }

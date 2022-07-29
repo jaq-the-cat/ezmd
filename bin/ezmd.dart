@@ -77,7 +77,7 @@ void downloadSongTo(String query, String path, {bool lyrics = false}) async {
       "year": song.album!.releaseDate!.substring(0, 4),
       "track": song.trackNumber.toString(),
       "artwork": artwork.url ?? "",
-      "duration": song.durationMs,
+      "duration": song.durationMs.toString(),
     };
     log("Found metadata: $tags");
     filename = "$path/${song.artists!.first.name} - $songName.mp3";
