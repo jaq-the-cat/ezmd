@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dotenv/dotenv.dart' as dotenv;
+/*import 'package:dotenv/dotenv.dart' as dotenv;*/
 import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
@@ -10,6 +10,9 @@ import 'package:uuid/uuid.dart';
 
 bool verbose = false;
 final uuid = Uuid();
+
+String sid = Platform.environment["SPOTIFY_CLIENT_ID"]!;
+String sse = Platform.environment["SPOTIFY_CLIENT_SECRET"]!;
 
 void log(Object? o) {
   if (verbose) print(o.toString());
@@ -54,8 +57,7 @@ class Youtube extends YoutubeExplode {
 
 class Spotify extends SpotifyApi {
   Spotify()
-      : super(SpotifyApiCredentials(dotenv.env["SPOTIFY_CLIENT_ID"],
-            dotenv.env["SPOTIFY_CLIENT_SECRET"]));
+      : super(SpotifyApiCredentials(sid, sse));
 
   Future<Track?> _getSongMetadataByQuery(String query) async {
     Page page =
@@ -178,7 +180,7 @@ Future<void> downloadAndAddTags(
 }
 
 void main(List<String> arguments) async {
-  dotenv.load();
+  /*dotenv.load();*/
   String? outPath;
   String? query;
 

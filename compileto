@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+source ./.env
+dart compile exe bin/ezmd.dart -o $1
