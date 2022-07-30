@@ -23,22 +23,23 @@ void log(Object? o) {
 }
 
 class Youtube extends YoutubeExplode {
-  Future<VideoId> getSongId(String query) async {
+  Future<VideoId?> getSongId(String query) async {
     VideoSearchList vs;
     vs = await search.search(query);
     if (vs.isEmpty) {
-      throw VideoUnavailableException("$query turned up no results");
+      return null;
     }
     return vs.first.id;
   }
 
-  Future<Stream<List<int>>> downloadSongFromId(VideoId id) async {
+  Future<Stream<List<int>>?> downloadSongFromId(VideoId? id) async {
+    if (id == null) return null;
     final manifest = await videos.streamsClient.getManifest(id);
     final sinfo = manifest.audioOnly.withHighestBitrate();
     return videos.streamsClient.get(sinfo);
   }
 
-  Future<Stream> downloadSong(String query) async =>
+  Future<Stream<List<int>>?> downloadSong(String query) async =>
       downloadSongFromId(await getSongId(query));
 
   Future<void> downloadSongToMp3(String query, String tempname) async {
@@ -47,6 +48,9 @@ class Youtube extends YoutubeExplode {
     log("Downloading first Youtube result from query '$query'");
     final stream = await downloadSong(query);
     final tempstream = File("$tempname.webm").openWrite(mode: FileMode.write);
+    if (stream == null) {
+      throw VideoUnavailableException("Failed to download $query");
+    }
     await stream.pipe(tempstream);
     await tempstream.flush();
     await tempstream.close();
@@ -151,7 +155,11 @@ void downloadSongFromTrack(Track? song, String outPath) async {
 Future<void> downloadAndAddTags(
     String query, String outPath, TagList tags) async {
   String tempname = "/tmp/${uuid.v4()}";
-  await yt.downloadSongToMp3(query, tempname);
+  try {
+    await yt.downloadSongToMp3(query, tempname);
+  } on VideoUnavailableException catch (e) {
+    stderr.writeln("Failed to download video $query");
+  }
 
   log("Writing tags to $query.mp3");
   final mp3Bytes = File("$tempname.mp3").readAsBytesSync();
@@ -214,8 +222,6 @@ void main(List<String> arguments) async {
           for (final query in File(filename).readAsLinesSync()) {
             try {
               downloadSongFromQuery(query.trim(), outPath);
-            } on VideoUnavailableException catch (_) {
-              stderr.writeln("Failed to download video");
             } catch (e) {
               continue;
             }
@@ -227,8 +233,6 @@ void main(List<String> arguments) async {
           for (final song in (await spotify.getPlaylistTracks(link)) ?? []) {
             try {
               downloadSongFromTrack(song, outPath);
-            } on VideoUnavailableException catch (_) {
-              stderr.writeln("Failed to download video");
             } catch (e) {
               continue;
             }
