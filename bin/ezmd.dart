@@ -151,11 +151,7 @@ void downloadSongFromTrack(Track? song, String outPath) async {
 Future<void> downloadAndAddTags(
     String query, String outPath, TagList tags) async {
   String tempname = "/tmp/${uuid.v4()}";
-  try {
-    await yt.downloadSongToMp3(query, tempname);
-  } catch (e) {
-    throw Exception("Failed to download $query");
-  }
+  await yt.downloadSongToMp3(query, tempname);
 
   log("Writing tags to $query.mp3");
   final mp3Bytes = File("$tempname.mp3").readAsBytesSync();
