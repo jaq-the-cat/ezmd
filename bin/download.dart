@@ -15,6 +15,9 @@ class Download {
   final Spotify spotify;
   final uuid = Uuid();
 
+  final List<String> _failed = [];
+  List<String> get failed => _failed;
+
   Download({required this.log})
       : yt = Youtube(log: log),
         spotify = Spotify();
@@ -46,15 +49,16 @@ class Download {
       stderr.writeln(
           "Something went wrong while downloading $query! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
       File("/tmp/ezmdlog.log").writeAsString("$e\n$stacktrace");
+      failed.add(query);
     }
   }
 
   void fromTrackLink(String link, String outPath) async {
     final id = link.split("/").last.split("?").first;
+    String? properQuery;
+
     try {
       log("Downloading '$link' to '$outPath'");
-
-      String? properQuery;
 
       final tags = await spotify.getSongMetadata(id: id);
       if (tags == null) {
@@ -68,10 +72,12 @@ class Download {
       stderr.writeln(
           "Something went wrong while downloading $link! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
       File("/tmp/ezmdlog.log").writeAsString("$e\n$stacktrace");
+      failed.add(properQuery ?? link);
     }
   }
 
   void fromTrack(Track? song, String outPath) async {
+    String? query;
     try {
       if (song == null) {
         stderr.writeln("Song not found");
@@ -79,13 +85,14 @@ class Download {
       }
 
       final tags = await spotify.extractSongMetadata(song);
-      String query = tags!.remove("query")!;
+      query = tags!.remove("query")!;
 
       await withTags(query, outPath, TagList.fromMap(fixTags(tags)));
     } catch (e, stacktrace) {
       stderr.writeln(
           "Something went wrong while downloading ${song!.name}! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
       File("/tmp/ezmdlog.log").writeAsString("$e\n$stacktrace");
+      failed.add(query ?? song.name!);
     }
   }
 
@@ -95,6 +102,7 @@ class Download {
       await yt.downloadSongToMp3(query, tempname);
     } on VideoUnavailableException catch (_) {
       stderr.writeln("Failed to download video $query");
+      failed.add(query);
       return;
     }
 

@@ -30,18 +30,18 @@ class Spotify {
   Future<List<Track>?> getPlaylistTracks(String link) async {
     try {
       final id = link.split('/').last.split('?').first;
-      var tracks = await _request("/playlist/tracks?id=$id");
-      print("tracks result: $tracks");
+      dynamic tracks = await _request("/playlist/tracks?id=$id");
       if (tracks == null) return null;
-      File("test.json").writeAsString(JsonEncoder().convert(tracks[0]));
-      tracks = List<Track>.from(tracks.map((track) => Track.fromJson(track['track'])));
+      tracks = List<Track>.from(tracks
+        .where((track) => track != null && track.containsKey("track") && track['track'] != null)
+        .map((track) => Track.fromJson(track['track'])));
       if (tracks.isEmpty) {
         return null;
       }
       return tracks;
-    } catch (e) {
+    } catch (e, tb) {
       stderr.writeln("Failed to download $link");
-      stderr.writeln(e);
+      stderr.writeln("$e\n$tb");
       return null;
     }
   }

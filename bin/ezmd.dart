@@ -79,6 +79,9 @@ void main(List<String> arguments) async {
       }
       break;
     case "spotify-song":
+      for (final link in results.rest) {
+        download.fromTrackLink(link, outPath);
+      }
       break;
     case "spotify-playlist":
       for (final link in results.rest) {
@@ -88,7 +91,6 @@ void main(List<String> arguments) async {
           return;
         }
         for (final track in tracks) {
-          print("current: $track");
           try {
             download.fromTrack(track, outPath);
           } catch (e) {
@@ -98,5 +100,10 @@ void main(List<String> arguments) async {
         }
       }
       break;
+  }
+  print("All done!");
+  stderr.writeln("Failed to download: ");
+  for (final f in download.failed) {
+    stderr.writeln(f);
   }
 }
