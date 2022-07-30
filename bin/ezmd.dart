@@ -56,8 +56,7 @@ class Youtube extends YoutubeExplode {
 }
 
 class Spotify extends SpotifyApi {
-  Spotify()
-      : super(SpotifyApiCredentials(sid, sse));
+  Spotify() : super(SpotifyApiCredentials(sid, sse));
 
   Future<Track?> _getSongMetadataByQuery(String query) async {
     Page page =
@@ -180,66 +179,77 @@ Future<void> downloadAndAddTags(
 }
 
 void main(List<String> arguments) async {
-  /*dotenv.load();*/
-  String? outPath;
-  String? query;
+  try {
+    /*dotenv.load();*/
+    String? outPath;
+    String? query;
 
-  final parser = ArgParser();
-  parser.addOption("folder",
-      abbr: "o", help: "Target folder", defaultsTo: null);
-  parser.addOption("intype",
-      abbr: "t",
-      help: "How to interpret the input\n"
-          "file: input is a file to be read line by line.\n"
-          "query: input will be interpreted as a single query\n"
-          "spotify: input will be interpreted as links to a spotify playlist",
-      allowed: ["file", "query", "spotify"],
-      defaultsTo: "query");
-  parser.addFlag("lyrics",
-      abbr: "l",
-      help: "Append ' Lyrics' to the Youtube query",
-      defaultsTo: false);
-  parser.addFlag("verbose",
-      abbr: "v", help: "Print out extra information", defaultsTo: false);
-  final results = parser.parse(arguments);
+    final parser = ArgParser();
+    parser.addFlag("help", abbr: "h");
+    parser.addOption("folder",
+        abbr: "f", help: "Target folder", defaultsTo: null);
+    parser.addOption("intype",
+        abbr: "t",
+        help: "How to interpret the input",
+        allowed: ["query", "file", "spotify"],
+        defaultsTo: "query");
+    parser.addFlag("lyrics",
+        abbr: "l",
+        help: "Append ' Lyrics' to the Youtube query",
+        defaultsTo: false);
+    parser.addFlag("verbose",
+        abbr: "v", help: "Print out extra information", defaultsTo: false);
+    final results = parser.parse(arguments);
 
-  verbose = results["verbose"] == true;
+    if (results["help"] == true) {
+      print(
+          "ezmd: Easily download songs from a query, file of queries or a spotify playlist\n");
+      print(parser.usage);
+      return;
+    }
 
-  // Get target folder
-  outPath = results["folder"] ?? getMusicFolder();
-  if (outPath == null || outPath.isEmpty) {
-    stderr.writeln("Unable to get output path");
-    return;
-  }
+    verbose = results["verbose"] == true;
 
-  // Get query and download song
-  switch (results["intype"]) {
-    case "query":
-      query = results.rest.join(" ");
-      downloadSongFromQuery(query, outPath);
-      break;
-    case "file":
-      for (final filename in results.rest) {
-        for (final query in File(filename).readAsLinesSync()) {
-          try {
-            downloadSongFromQuery(query.trim(), outPath);
-          } catch (e) {
-            continue;
+    // Get target folder
+    outPath = results["folder"] ?? getMusicFolder();
+    if (outPath == null || outPath.isEmpty) {
+      stderr.writeln("Unable to get output path");
+      return;
+    }
+
+    // Get query and download song
+    switch (results["intype"]) {
+      case "query":
+        query = results.rest.join(" ");
+        downloadSongFromQuery(query, outPath);
+        break;
+      case "file":
+        for (final filename in results.rest) {
+          for (final query in File(filename).readAsLinesSync()) {
+            try {
+              downloadSongFromQuery(query.trim(), outPath);
+            } catch (e) {
+              continue;
+            }
           }
         }
-      }
-      break;
-    case "spotify":
-      for (final link in results.rest) {
-        for (final song in (await spotify.getPlaylistTracks(link)) ?? []) {
-          try {
-            downloadSongFromTrack(song, outPath);
-          } catch (e) {
-            continue;
+        break;
+      case "spotify":
+        for (final link in results.rest) {
+          for (final song in (await spotify.getPlaylistTracks(link)) ?? []) {
+            try {
+              downloadSongFromTrack(song, outPath);
+            } catch (e) {
+              continue;
+            }
           }
         }
-      }
-      break;
+        break;
+    }
+  } catch (e, stacktrace) {
+    stderr.writeln(
+        "Something went wrong! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
+    File("/tmp/ezmdlog.log").writeAsString(stacktrace.toString());
   }
 }
 
