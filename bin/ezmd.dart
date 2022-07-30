@@ -14,7 +14,7 @@ bool lyrics = false;
 
 final uuid = Uuid();
 
-const apiUrl = "https://ezmd.herokuapp.com/";
+const apiUrl = "https://ezmd.herokuapp.com";
 
 void log(Object? o) {
   if (verbose) print(o.toString());
