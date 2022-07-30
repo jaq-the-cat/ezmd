@@ -4,11 +4,10 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:spotify/spotify.dart';
 
-const apiUrl = "https://ezmd.herokuapp.com";
+/*const apiUrl = "https://ezmd.herokuapp.com";*/
+const apiUrl = "http://127.0.0.1:8000";
 
 class Spotify {
-  Spotify();
-
   Future<dynamic> _request(String pathargs) async {
     final r = await http.get(Uri.parse(apiUrl + pathargs));
     if (r.statusCode == 200) return jsonDecode(r.body);
@@ -29,9 +28,10 @@ class Spotify {
       final tracks = await _request("/playlist/tracks?id=$id");
       if (tracks == null) return null;
       return List<Track>.from(
-          tracks.map((item) => Track.fromJson(item["track"])));
+          tracks.map((track) => Track.fromJson(track)));
     } catch (e) {
       stderr.writeln("Failed to download $link");
+      stderr.writeln(e);
       return null;
     }
   }
