@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:args/command_runner.dart';
 import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
@@ -14,6 +15,7 @@ bool lyrics = false;
 
 final uuid = Uuid();
 
+final parser = ArgParser();
 const apiUrl = "https://ezmd.herokuapp.com";
 
 void log(Object? o) {
@@ -79,7 +81,9 @@ class Spotify {
   Future<List<Track>?> getPlaylistTracks(String link) async {
     final id = link.split('/').last.split('?').first;
     final tracks = await _request("/playlist/tracks?id=$id");
-    return tracks?.map((item) => Track.fromJson(item["track"])).toList();
+    if (tracks == null) return null;
+    return List<Track>.from(
+        tracks.map((item) => Track.fromJson(item["track"])));
   }
 
   Future<List<String>?> getGenres(ArtistSimple? artist) async {
@@ -162,33 +166,34 @@ Future<void> downloadAndAddTags(
   log("Downlodaded '$query'");
 }
 
-void main(List<String> arguments) async {
-  try {
-    /*dotenv.load();*/
-    String? outPath;
-    String? query;
+String help() {
+  return "ezmd: Easily download songs from a query, file of queries or a spotify playlist\n" +
+      parser.usage;
+}
 
-    final parser = ArgParser();
-    parser.addFlag("help", abbr: "h");
-    parser.addOption("folder",
-        abbr: "f", help: "Target folder", defaultsTo: null);
-    parser.addOption("intype",
-        abbr: "t",
-        help: "How to interpret the input",
-        allowed: ["query", "file", "spotify"],
-        defaultsTo: "query");
-    parser.addFlag("lyrics",
-        abbr: "l",
-        help: "Append ' Lyrics' to the Youtube query",
-        defaultsTo: false);
-    parser.addFlag("verbose",
-        abbr: "v", help: "Print out extra information", defaultsTo: false);
+void main(List<String> arguments) async {
+  String? outPath;
+  String? query;
+
+  parser.addFlag("help", abbr: "h");
+  parser.addOption("folder",
+      abbr: "f", help: "Target folder", defaultsTo: null);
+  parser.addOption("intype",
+      abbr: "t",
+      help: "How to interpret the input",
+      allowed: ["query", "file", "spotify"],
+      defaultsTo: "query");
+  parser.addFlag("lyrics",
+      abbr: "l",
+      help: "Append ' Lyrics' to the Youtube query",
+      defaultsTo: false);
+  parser.addFlag("verbose",
+      abbr: "v", help: "Print out extra information", defaultsTo: false);
+  try {
     final results = parser.parse(arguments);
 
     if (results["help"] == true) {
-      print(
-          "ezmd: Easily download songs from a query, file of queries or a spotify playlist\n");
-      print(parser.usage);
+      print(help());
       return;
     }
 
@@ -196,9 +201,9 @@ void main(List<String> arguments) async {
     verbose = results["verbose"] == true;
 
     // Get target folder
-    outPath = results["folder"] ?? getMusicFolder();
+    outPath = results["folder"] ?? "./";
     if (outPath == null || outPath.isEmpty) {
-      stderr.writeln("Unable to get output path");
+      stderr.writeln("Invalid output path");
       return;
     }
 
@@ -231,21 +236,11 @@ void main(List<String> arguments) async {
         }
         break;
     }
+  } on ArgParserException catch (_) {
+    stderr.writeln("Argument error\n${help()}");
   } catch (e, stacktrace) {
     stderr.writeln(
         "Something went wrong! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
-    File("/tmp/ezmdlog.log").writeAsString(stacktrace.toString());
+    File("/tmp/ezmdlog.log").writeAsString("$e\n$stacktrace");
   }
-}
-
-String? getMusicFolder() {
-  String? musicPath;
-
-  if (Platform.isMacOS || Platform.isLinux) {
-    musicPath = path.join(Platform.environment["HOME"]!, "Music");
-  } else if (Platform.isWindows) {
-    musicPath = path.join(Platform.environment["UserProfile"]!, "Music");
-  }
-
-  return musicPath;
 }
