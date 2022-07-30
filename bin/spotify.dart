@@ -6,7 +6,7 @@ import 'package:spotify/spotify.dart';
 import 'package:dotenv/dotenv.dart' as dotenv;
 
 String apiUrl = (() {
-  dotenv.load();
+  if (File('.env').existsSync()) dotenv.load();
   return dotenv.env["EZMD_ENVIRONMENT"] == "DEBUG"
       ? "http://127.0.0.1:8000"
       : "https://ezmd.herokuapp.com";
