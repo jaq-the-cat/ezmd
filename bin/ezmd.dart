@@ -83,11 +83,16 @@ class Spotify {
   }
 
   Future<List<Track>?> getPlaylistTracks(String link) async {
-    final id = link.split('/').last.split('?').first;
-    final tracks = await _request("/playlist/tracks?id=$id");
-    if (tracks == null) return null;
-    return List<Track>.from(
-        tracks.map((item) => Track.fromJson(item["track"])));
+    try {
+      final id = link.split('/').last.split('?').first;
+      final tracks = await _request("/playlist/tracks?id=$id");
+      if (tracks == null) return null;
+      return List<Track>.from(
+          tracks.map((item) => Track.fromJson(item["track"])));
+    } catch (e) {
+      stderr.writeln("Failed to download $link");
+      return null;
+    }
   }
 
   Future<List<String>?> getGenres(ArtistSimple? artist) async {
@@ -127,29 +132,39 @@ final yt = Youtube();
 final spotify = Spotify();
 
 void downloadSongFromQuery(String query, String outPath) async {
-  log("Downloading '$query' to '$outPath'");
+  try {
+    log("Downloading '$query' to '$outPath'");
 
-  String? properQuery;
+    String? properQuery;
 
-  final tags = await spotify.getSongMetadata(query: query);
-  if (tags == null) {
-    properQuery = query;
-  } else {
-    properQuery = tags.remove("query")!;
+    final tags = await spotify.getSongMetadata(query: query);
+    if (tags == null) {
+      properQuery = query;
+    } else {
+      properQuery = tags.remove("query")!;
+    }
+
+    downloadAndAddTags(properQuery, outPath, TagList.fromMap(tags ?? {}));
+  } catch (e, stacktrace) {
+    stderr.writeln(
+        "Something went wrong with the query $query! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
+    File("/tmp/ezmdlog.log").writeAsString("$e\n$stacktrace");
   }
-
-  // appending " Lyrics" to the query can sometimes improve music search results in Youtube
-  downloadAndAddTags(properQuery, outPath, TagList.fromMap(tags ?? {}));
 }
 
 void downloadSongFromTrack(Track? song, String outPath) async {
-  if (song == null) return;
+  try {
+    if (song == null) return;
 
-  final tags = await extractSongMetadata(song);
-  String query = tags!.remove("query")!;
+    final tags = await extractSongMetadata(song);
+    String query = tags!.remove("query")!;
 
-  // appending " Lyrics" to the query can sometimes improve music search results in Youtube
-  downloadAndAddTags(query, outPath, TagList.fromMap(tags));
+    await downloadAndAddTags(query, outPath, TagList.fromMap(tags));
+  } catch (e, stacktrace) {
+    stderr.writeln(
+        "Something went wrong with track ${song!.name}! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
+    File("/tmp/ezmdlog.log").writeAsString("$e\n$stacktrace");
+  }
 }
 
 Future<void> downloadAndAddTags(
@@ -198,58 +213,55 @@ void main(List<String> arguments) async {
       defaultsTo: false);
   parser.addFlag("verbose",
       abbr: "v", help: "Print out extra information", defaultsTo: false);
+  final ArgResults results;
   try {
-    final results = parser.parse(arguments);
-
-    if (results["help"] == true) {
-      print(help());
-      return;
-    }
-
-    lyrics = results["lyrics"] == true;
-    verbose = results["verbose"] == true;
-
-    // Get target folder
-    outPath = results["folder"] ?? "./";
-    if (outPath == null || outPath.isEmpty) {
-      stderr.writeln("Invalid output path");
-      return;
-    }
-
-    // Get query and download song
-    switch (results["intype"]) {
-      case "query":
-        query = results.rest.join(" ");
-        downloadSongFromQuery(query, outPath);
-        break;
-      case "file":
-        for (final filename in results.rest) {
-          for (final query in File(filename).readAsLinesSync()) {
-            try {
-              downloadSongFromQuery(query.trim(), outPath);
-            } catch (e) {
-              continue;
-            }
-          }
-        }
-        break;
-      case "spotify":
-        for (final link in results.rest) {
-          for (final song in (await spotify.getPlaylistTracks(link)) ?? []) {
-            try {
-              downloadSongFromTrack(song, outPath);
-            } catch (e) {
-              continue;
-            }
-          }
-        }
-        break;
-    }
-  } on ArgParserException catch (_) {
+    results = parser.parse(arguments);
+  } catch (_) {
     stderr.writeln("Argument error\n${help()}");
-  } catch (e, stacktrace) {
-    stderr.writeln(
-        "Something went wrong! Please send the log file generated at /tmp/ezmdlog.log to the developer at jaq.cat@protonmail.ch");
-    File("/tmp/ezmdlog.log").writeAsString("$e\n$stacktrace");
+    return;
+  }
+  if (results["help"] == true) {
+    print(help());
+    return;
+  }
+
+  lyrics = results["lyrics"] == true;
+  verbose = results["verbose"] == true;
+
+  // Get target folder
+  outPath = results["folder"] ?? "./";
+  if (outPath == null || outPath.isEmpty) {
+    stderr.writeln("Invalid output path");
+    return;
+  }
+
+  // Get query and download song
+  switch (results["intype"]) {
+    case "query":
+      query = results.rest.join(" ");
+      downloadSongFromQuery(query, outPath);
+      break;
+    case "file":
+      for (final filename in results.rest) {
+        for (final query in File(filename).readAsLinesSync()) {
+          try {
+            downloadSongFromQuery(query.trim(), outPath);
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      break;
+    case "spotify":
+      for (final link in results.rest) {
+        for (final song in (await spotify.getPlaylistTracks(link)) ?? []) {
+          try {
+            downloadSongFromTrack(song, outPath);
+          } catch (e) {
+            continue;
+          }
+        }
+      }
+      break;
   }
 }
