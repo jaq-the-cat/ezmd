@@ -1,6 +1,5 @@
 import 'dart:io';
 
-/*import 'package:dotenv/dotenv.dart' as dotenv;*/
 import 'package:spotify/spotify.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import 'package:path/path.dart' as path;
@@ -11,8 +10,8 @@ import 'package:uuid/uuid.dart';
 bool verbose = false;
 final uuid = Uuid();
 
-String sid = Platform.environment["SPOTIFY_CLIENT_ID"]!;
-String sse = Platform.environment["SPOTIFY_CLIENT_SECRET"]!;
+const sid = String.fromEnvironment("SPOTIFY_CLIENT_ID"); // please dont steal this :D
+const sse = String.fromEnvironment("SPOTIFY_CLIENT_SECRET");
 
 void log(Object? o) {
   if (verbose) print(o.toString());
