@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:spotify/spotify.dart';
@@ -6,12 +7,14 @@ import 'package:path/path.dart' as path;
 import 'package:args/args.dart';
 import 'package:eztags/eztags.dart';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 
 bool verbose = false;
+bool lyrics = false;
+
 final uuid = Uuid();
 
-const sid = String.fromEnvironment("SPOTIFY_CLIENT_ID"); // please dont steal this :D
-const sse = String.fromEnvironment("SPOTIFY_CLIENT_SECRET");
+const apiUrl = "http://127.0.0.1:8000";
 
 void log(Object? o) {
   if (verbose) print(o.toString());
@@ -37,6 +40,8 @@ class Youtube extends YoutubeExplode {
       downloadSongFromId(await getSongId(query));
 
   Future<void> downloadSongToMp3(String query, String tempname) async {
+    // Lyrics can sometimes help narrow down search results
+    if (lyrics) query = "$query Lyrics";
     log("Downloading first Youtube result from query '$query'");
     final stream = await downloadSong(query);
     final tempstream = File("$tempname.webm").openWrite(mode: FileMode.write);
@@ -54,48 +59,32 @@ class Youtube extends YoutubeExplode {
   }
 }
 
-class Spotify extends SpotifyApi {
-  Spotify() : super(SpotifyApiCredentials(sid, sse));
+class Spotify {
+  Spotify();
 
-  Future<Track?> _getSongMetadataByQuery(String query) async {
-    Page page =
-        (await search.get(query, types: [SearchType.track]).first()).first;
-    final item = page.items?.first;
-    if (item is Track) return item;
-    return null;
-  }
-
-  Future<Track?> _getSongMetadataById(String query) async {
-    Page page =
-        (await search.get(query, types: [SearchType.track]).first()).first;
-    final item = page.items?.first;
-    if (item is Track) return item;
-    return null;
+  Future<dynamic> _request(String pathargs) async {
+    final r = await http.get(Uri.parse(apiUrl + pathargs));
+    if (r.statusCode == 200) return jsonDecode(r.body);
   }
 
   Future<Map<String, String>?> getSongMetadata(
       {String? query, String? id}) async {
-    Track? song;
-    if (query != null) {
-      song = await _getSongMetadataByQuery(query);
-    } else if (id != null) {
-      song = await _getSongMetadataById(id);
-    }
-    if (song == null) return null;
-    return extractSongMetadata(song);
+    List<dynamic>? json;
+    if (id != null) json = await _request("/track?id=$id");
+    if (query != null) json = await _request("/track?query=$query");
+    if (json == null || json.isEmpty) return null;
+    return extractSongMetadata(Track.fromJson(json.first));
   }
 
   Future<List<Track>?> getPlaylistTracks(String link) async {
     final id = link.split('/').last.split('?').first;
-    final playlist = await Playlists(this).get(id);
-    final tracks = playlist.tracks?.itemsNative;
+    final tracks = await _request("/playlist/tracks?id=$id");
     return tracks?.map((item) => Track.fromJson(item["track"])).toList();
   }
 
   Future<List<String>?> getGenres(ArtistSimple? artist) async {
     if (artist == null) return null;
-    final artistFull = await Artists(this).get(artist.id!);
-    return artistFull.genres;
+    return List<String>.from(await _request("/artist/genres?id=${artist.id}"));
   }
 }
 
@@ -129,8 +118,7 @@ Future<Map<String, String>?> extractSongMetadata(Track? song) async {
 final yt = Youtube();
 final spotify = Spotify();
 
-void downloadSongFromQuery(String query, String outPath,
-    {bool lyrics = false}) async {
+void downloadSongFromQuery(String query, String outPath) async {
   log("Downloading '$query' to '$outPath'");
 
   String? properQuery;
@@ -143,19 +131,16 @@ void downloadSongFromQuery(String query, String outPath,
   }
 
   // appending " Lyrics" to the query can sometimes improve music search results in Youtube
-  if (lyrics) properQuery = properQuery + " Lyrics";
-  downloadAndAddTags(query, outPath, TagList.fromMap(tags ?? {}));
+  downloadAndAddTags(properQuery, outPath, TagList.fromMap(tags ?? {}));
 }
 
-void downloadSongFromTrack(Track? song, String outPath,
-    {bool lyrics = false}) async {
+void downloadSongFromTrack(Track? song, String outPath) async {
   if (song == null) return;
 
   final tags = await extractSongMetadata(song);
   String query = tags!.remove("query")!;
 
   // appending " Lyrics" to the query can sometimes improve music search results in Youtube
-  if (lyrics) query = query + " Lyrics";
   downloadAndAddTags(query, outPath, TagList.fromMap(tags));
 }
 
@@ -207,6 +192,7 @@ void main(List<String> arguments) async {
       return;
     }
 
+    lyrics = results["lyrics"] == true;
     verbose = results["verbose"] == true;
 
     // Get target folder
