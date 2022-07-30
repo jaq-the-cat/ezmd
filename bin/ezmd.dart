@@ -30,7 +30,7 @@ void main(List<String> arguments) async {
   parser.addOption("intype",
       abbr: "t",
       help: "How to interpret the input",
-      allowed: ["query", "file", "spotify"],
+      allowed: ["query", "file", "spotify-song", "spotify-playlist"],
       defaultsTo: "query");
   parser.addFlag("lyrics",
       abbr: "l",
@@ -72,17 +72,27 @@ void main(List<String> arguments) async {
           try {
             download.fromQuery(query.trim(), outPath);
           } catch (e) {
+            stderr.writeln("Failed to download $query");
             continue;
           }
         }
       }
       break;
-    case "spotify":
+    case "spotify-song":
+      break;
+    case "spotify-playlist":
       for (final link in results.rest) {
-        for (final song in (await download.playlistTracks(link)) ?? []) {
+        final tracks = await download.playlistTracks(link);
+        if (tracks == null) {
+          stderr.writeln("Something went wrong while downloading $link");
+          return;
+        }
+        for (final track in tracks) {
+          print("current: $track");
           try {
-            download.fromTrack(song, outPath);
+            download.fromTrack(track, outPath);
           } catch (e) {
+            stderr.writeln("Failed to download ${track.name}");
             continue;
           }
         }
