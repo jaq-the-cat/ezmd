@@ -159,15 +159,20 @@ Future<void> downloadAndAddTags(
     await yt.downloadSongToMp3(query, tempname);
   } on VideoUnavailableException catch (e) {
     stderr.writeln("Failed to download video $query");
+    return;
   }
 
   log("Writing tags to $query.mp3");
-  final mp3Bytes = File("$tempname.mp3").readAsBytesSync();
-  String filename = path.join(outPath, query.replaceAll('/', '-'));
-  final f = File("$filename.mp3");
-  f.writeAsBytesSync(await makeId3v2(tags) + mp3Bytes);
+  try {
+    final mp3Bytes = File("$tempname.mp3").readAsBytesSync();
+    String filename = path.join(outPath, query.replaceAll('/', '-'));
+    final f = File("$filename.mp3");
+    f.writeAsBytesSync(await makeId3v2(tags) + mp3Bytes);
 
-  log("Downlodaded '$query'");
+    log("Downlodaded '$query'");
+  } catch (e) {
+    stderr.writeln("Failed to add tags to $query");
+  }
 }
 
 String help() {
