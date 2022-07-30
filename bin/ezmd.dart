@@ -214,6 +214,8 @@ void main(List<String> arguments) async {
           for (final query in File(filename).readAsLinesSync()) {
             try {
               downloadSongFromQuery(query.trim(), outPath);
+            } on VideoUnavailableException catch (_) {
+              stderr.writeln("Failed to download video");
             } catch (e) {
               continue;
             }
@@ -225,6 +227,8 @@ void main(List<String> arguments) async {
           for (final song in (await spotify.getPlaylistTracks(link)) ?? []) {
             try {
               downloadSongFromTrack(song, outPath);
+            } on VideoUnavailableException catch (_) {
+              stderr.writeln("Failed to download video");
             } catch (e) {
               continue;
             }
